@@ -14,7 +14,8 @@ Extended character mappings (not in ASCII 32-126):
   U+201C U+201D left/right double quote  -> double quote (U+0022)
   U+2013 en dash  )  game glyph 139 (horizontal rule) if present, else hyphen (U+002D)
   U+2014 em dash  )
-  U+2022 bullet      game glyph 140 (circle/ring) if present, else period (U+002E) centered
+  U+00A9 copyright   game glyph 140 (circle/ring symbol)
+  U+2022 bullet      period (U+002E) shifted to vertical center (both fonts)
 
 Game-internal codepoints 128-138 (vertical bar, bold digits 0-9) are excluded entirely:
 they have no correct Unicode mapping and are not useful on a web page.
@@ -121,15 +122,15 @@ def build_woff2(font_json_path, output_path):
 		cmap[0x2013] = dash_name  # en dash
 		cmap[0x2014] = dash_name  # em dash
 
-	# Codepoint 140: circle/ring -> bullet (U+2022).
-	# Only present in SMALL; BIG falls back to the shifted-period bullet below.
+	# Codepoint 140: circle/ring -> copyright symbol (U+00A9).
+	# Only present in SMALL.
 	if 140 in glyphs_by_cp:
 		g = glyphs_by_cp[140]
-		bullet_name = 'wolf3d_bullet'
-		glyph_order.append(bullet_name)
-		glyph_objects[bullet_name] = glyph_from_pixels(g['Pixels'], g['Width'], height)
-		metrics[bullet_name] = (g['Width'] * SCALE_X, 0)
-		cmap[0x2022] = bullet_name
+		copyright_name = 'wolf3d_copyright'
+		glyph_order.append(copyright_name)
+		glyph_objects[copyright_name] = glyph_from_pixels(g['Pixels'], g['Width'], height)
+		metrics[copyright_name] = (g['Width'] * SCALE_X, 0)
+		cmap[0x00A9] = copyright_name
 
 	# Aliases: map Unicode characters to existing ASCII glyphs via cmap only.
 	# Each entry is skipped if the target was already assigned above.
@@ -145,15 +146,15 @@ def build_woff2(font_json_path, output_path):
 		if target_cp not in cmap and source_cp in cmap:
 			cmap[target_cp] = cmap[source_cp]
 
-	# Bullet fallback: period shifted to vertical center (BIG, which has no glyph 140).
-	if 0x2022 not in cmap and 0x002E in glyphs_by_cp:
+	# Bullet: period shifted to vertical center (both fonts).
+	if 0x002E in glyphs_by_cp:
 		period = glyphs_by_cp[0x002E]
 		bullet_pixels = shift_pixels_to_vertical_center(period['Pixels'], period['Width'], height)
-		fallback_bullet_name = 'wolf3d_bullet'
-		glyph_order.append(fallback_bullet_name)
-		cmap[0x2022] = fallback_bullet_name
-		glyph_objects[fallback_bullet_name] = glyph_from_pixels(bullet_pixels, period['Width'], height)
-		metrics[fallback_bullet_name] = (period['Width'] * SCALE_X, 0)
+		bullet_name = 'wolf3d_bullet'
+		glyph_order.append(bullet_name)
+		cmap[0x2022] = bullet_name
+		glyph_objects[bullet_name] = glyph_from_pixels(bullet_pixels, period['Width'], height)
+		metrics[bullet_name] = (period['Width'] * SCALE_X, 0)
 
 	fb = FontBuilder(upm, isTTF=True)
 	fb.setupGlyphOrder(glyph_order)

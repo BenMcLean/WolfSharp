@@ -331,8 +331,6 @@ public class MenuRenderer
 		}
 	}
 	/// <summary>
-	/// Render decorative horizontal stripes by stretching the leftmost pixel column.
-	/// <summary>
 	/// Render menu items as text labels.
 	/// Uses layout coordinates from menuDef (matching original Wolf3D layout).
 	/// </summary>
