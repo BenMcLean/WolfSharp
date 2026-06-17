@@ -391,6 +391,11 @@ public class LuaScriptEngine
 			compiledActionFunctions[functionName] = DynValue.Nil;
 			return;
 		}
+		DynValue existing = baseEnvironment.Get(functionName);
+		if (existing.Type == DataType.ClrFunction || existing.Type == DataType.Table)
+			throw new InvalidOperationException(
+				$"Script name '{functionName}' conflicts with a built-in C# API method or standard library. " +
+				"Rename the script.");
 		try
 		{
 			DynValue compiled = CompileLuaChunk(functionName, luaCode, LuaEngineMode.Strict, validateUpvalues: true);

@@ -609,7 +609,7 @@ public class MenuRenderer
 					break;
 				}
 		// Recalculate position for right-aligned tickers
-		if (tickerDef?.Align?.Equals("Right", StringComparison.OrdinalIgnoreCase) == true)
+		if (tickerDef?.Align?.Equals("Right", StringComparison.OrdinalIgnoreCase) ?? false)
 		{
 			string fontName = tickerDef.Font ?? menuDef?.Font ?? "BIG";
 			if (SharedAssetManager.Themes.TryGetValue(fontName, out Theme theme))

@@ -327,9 +327,9 @@ public class MenuManager
 			return;
 		}
 		Assets.Graphics.Font smallFont = null;
-		if (SharedAssetManager.CurrentGame?.VgaGraph?.ChunkFontsByName?.TryGetValue("SMALL", out int fontIdx) == true)
-			if (fontIdx < SharedAssetManager.CurrentGame.VgaGraph.Fonts.Length)
-				smallFont = SharedAssetManager.CurrentGame.VgaGraph.Fonts[fontIdx];
+		if (SharedAssetManager.CurrentGame?.VgaGraph?.ChunkFontsByName?.TryGetValue("SMALL", out int fontIdx) ?? false
+			&& fontIdx < SharedAssetManager.CurrentGame.VgaGraph.Fonts.Length)
+			smallFont = SharedAssetManager.CurrentGame.VgaGraph.Fonts[fontIdx];
 		Assets.Graphics.VgaGraph vgaGraph = SharedAssetManager.CurrentGame?.VgaGraph;
 		string picNameResolver(int absIdx) => vgaGraph.PicNamesByRelativeIndex?.GetValueOrDefault(absIdx - (int)vgaGraph.StartPic);
 		(int width, int height)? picSizeResolver(int absIdx)

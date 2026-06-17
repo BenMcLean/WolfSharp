@@ -11,7 +11,7 @@ namespace BenMcLean.Wolf3D.Shared.Text;
 public static class TextLayoutHelper
 {
 	private static bool IsRightAligned(TextDefinition textDef) =>
-		textDef.Align?.Equals("Right", StringComparison.OrdinalIgnoreCase) == true;
+		textDef.Align?.Equals("Right", StringComparison.OrdinalIgnoreCase) ?? false;
 	private static bool HasFixedRightAlignedField(TextDefinition textDef) =>
 		IsRightAligned(textDef) && !string.IsNullOrWhiteSpace(textDef.Content);
 	private static float GetRightAlignedFieldWidth(TextDefinition textDef, Font font, int fontSize)

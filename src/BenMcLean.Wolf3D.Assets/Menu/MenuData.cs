@@ -146,19 +146,19 @@ public class PictureDefinition
 	/// <summary>
 	/// Returns true if X coordinate should be centered horizontally
 	/// </summary>
-	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if X coordinate should be aligned to the right edge
 	/// </summary>
-	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) == true;
+	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be centered vertically
 	/// </summary>
-	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be aligned to the bottom edge
 	/// </summary>
-	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) == true;
+	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Gets the X coordinate as an integer, or 0 if set to an alignment keyword
 	/// </summary>
@@ -256,19 +256,19 @@ public class TextDefinition
 	/// <summary>
 	/// Returns true if X coordinate should be centered horizontally
 	/// </summary>
-	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if X coordinate should be aligned to the right edge
 	/// </summary>
-	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) == true;
+	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be centered vertically
 	/// </summary>
-	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be aligned to the bottom edge
 	/// </summary>
-	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) == true;
+	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Gets the X coordinate as an integer, or 0 if set to an alignment keyword
 	/// </summary>
@@ -361,19 +361,19 @@ public class MenuTickerDefinition
 	/// <summary>
 	/// Returns true if X coordinate should be centered horizontally
 	/// </summary>
-	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterX => X?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if X coordinate should be aligned to the right edge
 	/// </summary>
-	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) == true;
+	public bool RightX => X?.Equals("Right", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be centered vertically
 	/// </summary>
-	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) == true;
+	public bool CenterY => Y?.Equals("Center", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Returns true if Y coordinate should be aligned to the bottom edge
 	/// </summary>
-	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) == true;
+	public bool BottomY => Y?.Equals("Bottom", StringComparison.OrdinalIgnoreCase) ?? false;
 	/// <summary>
 	/// Gets the X coordinate as an integer, or 0 if set to an alignment keyword
 	/// </summary>

@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
+using BenMcLean.Wolf3D.Assets.Gameplay;
 
 namespace BenMcLean.Wolf3D.Simulator.Lua;
 
@@ -163,6 +164,49 @@ public class ActionScriptContext(
 	public void TriggerVictory(int viewTileX, int viewTileY) =>
 		simulator.TriggerVictory((ushort)viewTileX, (ushort)viewTileY);
 	#endregion Player Query & Actor API
+	#region Weapon Query API (exposed to Lua)
+	/// <summary>
+	/// Get the type name of the currently equipped weapon in slot 0.
+	/// WL_AGENT.C:gamestate.weapon equivalent — used to check "weapon == wp_knife" conditions.
+	/// Returns null if no weapon slots exist.
+	/// </summary>
+	public string GetCurrentWeaponType() =>
+		simulator.WeaponSlots.Count > 0 ? simulator.WeaponSlots[0].WeaponType : null;
+	/// <summary>
+	/// Get the ammo type for a weapon by its number.
+	/// Data-driven from XML AmmoType attribute. Used by SwitchBestWeaponForAmmo.lua.
+	/// Returns null if the weapon number is not found or the weapon has no ammo type.
+	/// </summary>
+	/// <param name="weaponNumber">Weapon number (e.g., 0=knife, 1=pistol, 2=machinegun, 3=chaingun)</param>
+	public string GetWeaponAmmoType(int weaponNumber) =>
+		(simulator.WeaponCollection?.TryGetWeaponByNumber(weaponNumber, out WeaponInfo w) ?? false)
+			? w.AmmoType
+			: null;
+	/// <summary>
+	/// Get the name of a weapon by its number.
+	/// Used by SwitchBestWeaponForAmmo.lua to resolve the name for SwitchToWeapon.
+	/// Returns null if the weapon number is not found.
+	/// </summary>
+	/// <param name="weaponNumber">Weapon number (e.g., 0=knife, 1=pistol, 2=machinegun, 3=chaingun)</param>
+	public string GetWeaponName(int weaponNumber) =>
+		(simulator.WeaponCollection?.TryGetWeaponByNumber(weaponNumber, out WeaponInfo w) ?? false)
+			? w.Name
+			: null;
+	/// <summary>
+	/// Get the highest weapon number defined in the weapon collection.
+	/// Used by SwitchBestWeaponForAmmo.lua as the upper bound for its iteration.
+	/// Returns -1 if no weapons are defined.
+	/// </summary>
+	public int GetMaxWeaponNumber()
+	{
+		WeaponCollection weaponCollection = simulator.WeaponCollection;
+		if (weaponCollection is null) return -1;
+		int max = -1;
+		foreach (WeaponInfo weapon in weaponCollection.Weapons.Values)
+			if (weapon.Number > max) max = weapon.Number;
+		return max;
+	}
+	#endregion Weapon Query API
 	#region Picture API (exposed to Lua)
 	/// <summary>
 	/// Update a named status bar picture.

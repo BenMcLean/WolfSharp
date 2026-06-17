@@ -834,7 +834,7 @@ void sky() {
 	private static Material CreateElevatorFloorCeilingMaterial(ushort? tilePage, byte? paletteColor)
 	{
 		if (tilePage.HasValue
-			&& VRAssetManager.OpaqueMaterials?.TryGetValue(tilePage.Value, out StandardMaterial3D tileMat) == true)
+			&& (VRAssetManager.OpaqueMaterials?.TryGetValue(tilePage.Value, out StandardMaterial3D tileMat) ?? false))
 			return tileMat;
 		if (paletteColor.HasValue)
 			return new StandardMaterial3D
@@ -989,19 +989,19 @@ void sky() {
 		if (SelectedGameXmlPath is not null)
 			return;
 		// Quit: user confirmed quit dialog
-		if (_menuManager?.PendingQuit == true)
+		if (_menuManager?.PendingQuit ?? false)
 		{
 			GetTree().Quit();
 			return;
 		}
 		// End game: user confirmed end-game dialog
-		if (_menuManager?.PendingEndGame == true)
+		if (_menuManager?.PendingEndGame ?? false)
 		{
 			_menuManager.ClearPendingEndGame();
 			PendingEndGame = true;
 		}
 		// Check if intermission screen was dismissed (Lua called ContinueToNextLevel)
-		if (_menuManager?.ScriptContext?.ContinueToNextLevelRequested == true && LevelTransition is not null)
+		if (_menuManager?.ScriptContext?.ContinueToNextLevelRequested ?? false && LevelTransition is not null)
 			PendingLevelTransition = LevelTransition;
 		// Apply VR play mode changes from the menu session state
 		if (_displayMode is VRDisplayMode vrDisplayMode && _menuManager is not null)

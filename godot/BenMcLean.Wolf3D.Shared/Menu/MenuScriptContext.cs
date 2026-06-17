@@ -396,7 +396,7 @@ public class MenuScriptContext(
 	/// <param name="picName">Name of the VgaGraph picture to display (e.g., "C_BABYMODEPIC")</param>
 	public void SetPicture(string id, string picName)
 	{
-		if (SetPictureAction?.Invoke(id, picName) == true)
+		if (SetPictureAction?.Invoke(id, picName) ?? false)
 			return;
 		SetStatusBarFallbackPictureAction?.Invoke(id, picName);
 	}

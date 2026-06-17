@@ -1317,7 +1317,7 @@ void sky() {
 			if (weaponType is null)
 				continue;
 			// Use IdleState shape so menu shows weapon at rest, not mid-animation (e.g., not firing frame)
-			if (weapons?.TryGetWeapon(weaponType, out Assets.Gameplay.WeaponInfo info) == true
+			if ((weapons?.TryGetWeapon(weaponType, out Assets.Gameplay.WeaponInfo info) ?? false)
 				&& info?.IdleState is not null
 				&& (states?.States.TryGetValue(info.IdleState, out Assets.Gameplay.State idleState) ?? false)
 				&& idleState.Shape >= 0)
@@ -1420,7 +1420,7 @@ void sky() {
 		// Capture level-transition data when the map has an elevator destination.
 		// This is stored in PendingLevelTransitionForMenu and passed to MenuRoom via SuspendToMenu.
 		// ContinueToNextLevel() in Lua is the sole mechanism that triggers the actual transition.
-		if (MapAnalysis?.ElevatorTo != 0 || MapAnalysis?.AltElevatorTo.HasValue == true)
+		if (MapAnalysis?.ElevatorTo != 0 || (MapAnalysis?.AltElevatorTo.HasValue ?? false))
 		{
 			uint playerPos = sim is not null
 				? (uint)sim.PlayerTileX | ((uint)sim.PlayerTileY << 16)

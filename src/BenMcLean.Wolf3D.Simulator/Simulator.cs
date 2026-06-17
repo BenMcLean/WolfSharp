@@ -707,7 +707,7 @@ public class Simulator : ISnapshot<SimulatorSnapshot>
 				TileY = door.TileY
 			});
 			// Emit door opening sound
-			if (MapAnalyzer?.Doors.TryGetValue(door.TileNumber, out DoorInfo doorInfo) == true
+			if ((MapAnalyzer?.Doors.TryGetValue(door.TileNumber, out DoorInfo doorInfo) ?? false)
 				&& !string.IsNullOrEmpty(doorInfo.OpenSound))
 				EmitDoorPlaySound(doorIndex, doorInfo.OpenSound);
 		}
