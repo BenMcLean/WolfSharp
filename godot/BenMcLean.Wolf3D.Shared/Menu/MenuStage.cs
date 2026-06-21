@@ -13,6 +13,8 @@ public partial class MenuStage : Node
 {
 	private MenuManager _menuManager;
 	private ColorRect _marginBackground;
+	private TextureRect _menuTextureRect;
+	private Vector2I _lastWindowSize;
 	/// <summary>
 	/// Gets the menu manager instance.
 	/// </summary>
@@ -51,45 +53,24 @@ public partial class MenuStage : Node
 			Layer = 1, // Render above 3D scene
 		};
 		AddChild(canvasLayer);
-		// Get window size
-		Vector2I windowSize = DisplayServer.WindowGetSize();
 		// Create margin background ColorRect that fills the entire window
 		// This will be colored with the menu's border color
 		_marginBackground = new ColorRect
 		{
 			Color = Colors.Black, // Default to black, will be updated by border color events
-			Size = windowSize,
 		};
 		canvasLayer.AddChild(_marginBackground);
-		// Calculate size for 4:3 aspect ratio display
-		// SVGA Mode 13h is 320x200, which is 4:3 aspect ratio (with square pixels)
-		const float menuAspectRatio = 4.0f / 3.0f;
-		float windowAspectRatio = (float)windowSize.X / windowSize.Y;
-		Vector2 menuSize,
-			menuPosition;
-		if (windowAspectRatio > menuAspectRatio)
-		{
-			// Window is wider than 4:3 (widescreen) - fit to height with pillarbox margins
-			menuSize = new Vector2(windowSize.Y * menuAspectRatio, windowSize.Y);
-			menuPosition = new Vector2((windowSize.X - menuSize.X) / 2, 0);
-		}
-		else
-		{
-			// Window is narrower than 4:3 (or exactly 4:3) - fit to width with letterbox margins
-			menuSize = new Vector2(windowSize.X, windowSize.X / menuAspectRatio);
-			menuPosition = new Vector2(0, (windowSize.Y - menuSize.Y) / 2);
-		}
 		// Create TextureRect to display the viewport texture with manual sizing
-		TextureRect textureRect = new()
+		_menuTextureRect = new TextureRect
 		{
 			Texture = _menuManager.Renderer.ViewportTexture,
-			Size = menuSize,
-			Position = menuPosition,
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 			StretchMode = TextureRect.StretchModeEnum.Scale, // Scale to fill the rect
 			TextureFilter = Control.TextureFilterEnum.Nearest, // Sharp pixel-perfect rendering
 		};
-		canvasLayer.AddChild(textureRect);
+		canvasLayer.AddChild(_menuTextureRect);
+		_lastWindowSize = Vector2I.Zero;
+		UpdateFlatscreenMenuLayout();
 		// Subscribe to border color change events
 		_menuManager.Renderer.BordColorChanged += OnBordColorChanged;
 		// Set initial margin color
@@ -108,8 +89,36 @@ public partial class MenuStage : Node
 	}
 	/// <summary>
 	/// Called each frame.
-	/// Updates the menu system.
+	/// Updates the menu system and reflows layout when the window is resized.
 	/// </summary>
 	/// <param name="delta">Time since last frame in seconds</param>
-	public override void _Process(double delta) => _menuManager?.Update(delta);
+	public override void _Process(double delta)
+	{
+		UpdateFlatscreenMenuLayout();
+		_menuManager?.Update(delta);
+	}
+	private void UpdateFlatscreenMenuLayout()
+	{
+		if (_marginBackground is null || _menuTextureRect is null)
+			return;
+		Vector2I windowSize = DisplayServer.WindowGetSize();
+		if (windowSize == _lastWindowSize || windowSize.X <= 0 || windowSize.Y <= 0)
+			return;
+		_lastWindowSize = windowSize;
+		_marginBackground.Size = windowSize;
+		(Vector2 menuSize, Vector2 menuPosition) = CalculateAspectFit(windowSize, 4.0f / 3.0f);
+		_menuTextureRect.Size = menuSize;
+		_menuTextureRect.Position = menuPosition;
+	}
+	private static (Vector2 Size, Vector2 Position) CalculateAspectFit(Vector2I windowSize, float aspectRatio)
+	{
+		float windowAspect = (float)windowSize.X / windowSize.Y;
+		if (windowAspect > aspectRatio)
+		{
+			Vector2 size = new(windowSize.Y * aspectRatio, windowSize.Y);
+			return (size, new Vector2((windowSize.X - size.X) / 2f, 0f));
+		}
+		Vector2 letterboxedSize = new(windowSize.X, windowSize.X / aspectRatio);
+		return (letterboxedSize, new Vector2(0f, (windowSize.Y - letterboxedSize.Y) / 2f));
+	}
 }

@@ -227,6 +227,13 @@ public partial class SetupRoom : Node3D, IRoom
 					SharedAssetManager.LoadGame(_xmlPath, preferEmbeddedShareware: IsInitialLoad);
 					_dosScreen.WriteLine("Done.");
 					_phase = Phase.Done;
+					// The blocking LoadGame() call above may have taken several seconds,
+					// during which the window could have been resized without _Process()
+					// being able to respond. Force a layout refresh now so "Done." is
+					// displayed at the correct size/position.
+					_lastWindowSize = Vector2I.Zero;
+					if (!_displayMode.IsVRActive)
+						UpdateFlatscreenDosLayout();
 					// Root polls IsComplete and performs the scene transition
 				}
 				catch (Exception ex)
