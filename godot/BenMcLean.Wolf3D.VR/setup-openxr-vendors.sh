@@ -10,18 +10,18 @@
 set -e
 
 # Plugin version - update this when upgrading
-PLUGIN_VERSION="3.0.0"
+PLUGIN_VERSION="4.3.1-stable"
 
 # Minimum Godot version required for this plugin version
-MIN_GODOT_VERSION="4.3"
+MIN_GODOT_VERSION="4.4"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ADDONS_DIR="$SCRIPT_DIR/addons"
 PLUGIN_DIR="$ADDONS_DIR/godotopenxrvendors"
 
 # GitHub release URL
-DOWNLOAD_URL="https://github.com/GodotVR/godot_openxr_vendors/releases/download/v${PLUGIN_VERSION}/godotopenxrvendors_v${PLUGIN_VERSION}.zip"
-TEMP_ZIP="/tmp/godotopenxrvendors_v${PLUGIN_VERSION}.zip"
+DOWNLOAD_URL="https://github.com/GodotVR/godot_openxr_vendors/releases/download/${PLUGIN_VERSION}/godotopenxrvendorsaddon.zip"
+TEMP_ZIP="/tmp/godotopenxrvendorsaddon.zip"
 
 echo "Godot OpenXR Vendors Plugin Setup"
 echo "=================================="
@@ -59,11 +59,23 @@ else
 fi
 
 echo "Extracting..."
-# The zip contains addons/godotopenxrvendors/
-unzip -q "$TEMP_ZIP" -d "$SCRIPT_DIR"
-
-# Cleanup
+TEMP_EXTRACT="/tmp/godotopenxrvendors_extract"
+rm -rf "$TEMP_EXTRACT"
+mkdir -p "$TEMP_EXTRACT"
+unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
 rm -f "$TEMP_ZIP"
+
+mkdir -p "$ADDONS_DIR"
+if [ -d "$TEMP_EXTRACT/asset/addons/godotopenxrvendors" ]; then
+    cp -r "$TEMP_EXTRACT/asset/addons/godotopenxrvendors" "$ADDONS_DIR/"
+elif [ -d "$TEMP_EXTRACT/addons/godotopenxrvendors" ]; then
+    cp -r "$TEMP_EXTRACT/addons/godotopenxrvendors" "$ADDONS_DIR/"
+else
+    echo "ERROR: Could not find godotopenxrvendors in extracted zip"
+    rm -rf "$TEMP_EXTRACT"
+    exit 1
+fi
+rm -rf "$TEMP_EXTRACT"
 
 # Verify installation
 if [ -d "$PLUGIN_DIR" ]; then

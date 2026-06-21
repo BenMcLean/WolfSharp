@@ -865,6 +865,9 @@ godot/BenMcLean.Wolf3D.VR/addons/godotopenxrvendors/
 godot/BenMcLean.Wolf3D.VR/android/build/
 godot/BenMcLean.Wolf3D.VR/android/.build_version
 
+# act local secrets file (never commit)
+.secrets
+
 # Video captures
 *.avi
 

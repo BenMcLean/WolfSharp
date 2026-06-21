@@ -1,3 +1,9 @@
+# Required repository secrets for the Android (Meta Quest) job:
+#   ANDROID_KEYSTORE_BASE64   - release.keystore encoded as base64 (base64 -w 0 release.keystore)
+#   ANDROID_KEY_ALIAS         - key alias chosen when the keystore was created
+#   ANDROID_KEYSTORE_PASSWORD - password for both the keystore and the key
+# If these secrets are absent the Android job will fail; Windows and Linux builds are unaffected.
+# IMPORTANT: keep the original release.keystore file safe - losing it prevents updating existing installs.
 name: Build
 
 on:
@@ -9,7 +15,7 @@ on:
         type: string
 
 env:
-  GODOT_VERSION: "4.5"
+  GODOT_VERSION: "4.5.1"
 
 jobs:
   export:
@@ -76,3 +82,113 @@ jobs:
         with:
           name: ${{ matrix.name }}-v${{ inputs.version }}
           path: ${{ matrix.output_dir }}/
+
+  export-android:
+    name: Export Android (Meta Quest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Android SDK components
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "ndk;28.1.13356709" \
+            "build-tools;35.0.0" \
+            "platforms;android-35"
+
+      - name: Download Godot
+        run: |
+          wget -q "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}-stable/Godot_v${{ env.GODOT_VERSION }}-stable_mono_linux_x86_64.zip" -O godot.zip
+          unzip -q godot.zip
+          sudo install -m 755 "Godot_v${{ env.GODOT_VERSION }}-stable_mono_linux_x86_64/Godot_v${{ env.GODOT_VERSION }}-stable_mono_linux.x86_64" /usr/local/bin/godot
+          sudo cp -r "Godot_v${{ env.GODOT_VERSION }}-stable_mono_linux_x86_64/GodotSharp" /usr/local/bin/GodotSharp
+
+      - name: Install export templates
+        run: |
+          wget -q "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}-stable/Godot_v${{ env.GODOT_VERSION }}-stable_mono_export_templates.tpz" -O templates.tpz
+          mkdir -p "$HOME/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable.mono"
+          unzip -q templates.tpz -d /tmp/godot_tpl
+          mv /tmp/godot_tpl/templates/* "$HOME/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable.mono/"
+
+      - name: Import project resources
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: godot --headless --import
+
+      - name: Build C# assemblies
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: dotnet build
+
+      - name: Download OpenXR Vendors plugin
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: bash setup-openxr-vendors.sh
+
+      - name: Install Android build template
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: |
+          mkdir -p android/build
+          unzip -q "$HOME/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable.mono/android_source.zip" -d android/build
+          echo "${{ env.GODOT_VERSION }}.stable.mono" > android/.build_version
+
+      - name: Write keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$GITHUB_WORKSPACE/release.keystore"
+
+      - name: Configure export credentials
+        env:
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          cat > "godot/BenMcLean.Wolf3D.VR/.godot/export_credentials.cfg" <<EOF
+          [preset.0]
+
+          script_encryption_key=""
+
+          [preset.0.options]
+
+          keystore/debug=""
+          keystore/debug_user=""
+          keystore/debug_password=""
+          keystore/release="$GITHUB_WORKSPACE/release.keystore"
+          keystore/release_user="$KEY_ALIAS"
+          keystore/release_password="$KEYSTORE_PASSWORD"
+
+          [preset.1]
+
+          script_encryption_key=""
+
+          [preset.1.options]
+
+          codesign/identity_type=0
+          codesign/identity=""
+          codesign/password=""
+          EOF
+
+      - name: Export Android
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/build/android"
+          godot --headless --export-release "Android" "$GITHUB_WORKSPACE/build/android/BenMcLean.Wolf3D.VR.apk"
+
+      - name: Bundle games folder and README
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/build/android/games"
+          cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/build/android/games/GAMES.md"
+          if [ -f "$GITHUB_WORKSPACE/README.md" ]; then
+            cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/build/android/README.md"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-meta-quest-v${{ inputs.version }}
+          path: build/android/
