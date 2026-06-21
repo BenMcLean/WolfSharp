@@ -80,7 +80,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name }}-v${{ inputs.version }}
+          name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}
           path: ${{ matrix.output_dir }}/
 
   export-android:
@@ -180,15 +180,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/build/android"
           godot --headless --export-release "Android" "$GITHUB_WORKSPACE/build/android/BenMcLean.Wolf3D.VR.apk"
 
-      - name: Bundle games folder and README
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/build/android/games"
-          cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/build/android/games/GAMES.md"
-          if [ -f "$GITHUB_WORKSPACE/README.md" ]; then
-            cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/build/android/README.md"
-          fi
-
       - uses: actions/upload-artifact@v4
         with:
-          name: android-meta-quest-v${{ inputs.version }}
-          path: build/android/
+          name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ inputs.version }}
+          path: build/android/BenMcLean.Wolf3D.VR.apk
