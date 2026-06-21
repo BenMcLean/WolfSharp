@@ -34,12 +34,20 @@ public partial class FPSCamera : Camera3D
 	/// Event fired when right mouse button is pressed (push/use).
 	/// </summary>
 	public event Action RightClickPressed;
+	/// <summary>
+	/// Event fired when mouse wheel scrolls up (next weapon).
+	/// </summary>
+	public event Action WheelUp;
+	/// <summary>
+	/// Event fired when mouse wheel scrolls down (previous weapon).
+	/// </summary>
+	public event Action WheelDown;
 	// Mouse state
 	private Vector2 _mouseMotion = Vector2.Zero;
 	private float _totalPitch = 0.0f;
 	// Movement state
 	private Vector3 _velocity = Vector3.Zero;
-	private float _velMultiplier = 4f;
+	private float _velMultiplier = 20f;
 	// Keyboard state
 	private bool _w = false,
 		_s = false,
@@ -82,10 +90,10 @@ public partial class FPSCamera : Camera3D
 						RightClickPressed?.Invoke();
 					break;
 				case MouseButton.WheelUp:
-					_velMultiplier = Mathf.Clamp(_velMultiplier * 1.1f, 0.2f, 20f);
+					WheelUp?.Invoke();
 					break;
 				case MouseButton.WheelDown:
-					_velMultiplier = Mathf.Clamp(_velMultiplier / 1.1f, 0.2f, 20f);
+					WheelDown?.Invoke();
 					break;
 			}
 		// Keyboard for movement, turning, and actions

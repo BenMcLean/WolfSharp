@@ -66,6 +66,9 @@ public class FlatscreenDisplayMode : IDisplayMode
 		_camera.LeftClickReleased += () => HandButtonReleased?.Invoke(0, "trigger_click");
 		// Right click = hand 0 grip (use/push)
 		_camera.RightClickPressed += () => HandButtonPressed?.Invoke(0, "grip_click");
+		// Wheel up = next weapon; wheel down = previous weapon (mirrors VR by_button/ax_button)
+		_camera.WheelUp += () => HandButtonPressed?.Invoke(0, "by_button");
+		_camera.WheelDown += () => HandButtonPressed?.Invoke(0, "ax_button");
 	}
 	public void Update(double delta)
 	{
