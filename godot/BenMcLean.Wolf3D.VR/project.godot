@@ -13,6 +13,10 @@ config_version=5
 config/name="BenMcLean.Wolf3D.VR"
 run/main_scene="uid://dhd46tw7ig3ak"
 config/features=PackedStringArray("4.5", "C#", "Mobile")
+boot_splash/bg_color=Color(0.53333336, 0, 0, 1)
+boot_splash/fullsize=false
+boot_splash/use_filter=false
+boot_splash/image="uid://drbcbabwqhr7p"
 config/icon="uid://degrqg6flee8t"
 config/windows_native_icon="res://Resources/icon.ico"
 
