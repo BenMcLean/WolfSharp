@@ -334,7 +334,7 @@
 			<!-- WL_MENU.C:NewItems={NM_X,NM_Y,4,2,24} — curpos=2 defaults to "Bring 'em on!"
 			(Normal) -->
 			<Menu Name="NewGame" X="50" Y="100" Indent="0" Spacing="13" CurPos="2" CursorPic=""
-				SelectSound="SHOOTDOORSND">
+				SelectSound="SHOOTSND">
 				<!-- WL_MENU.C:1654: DrawWindow(NM_X-5,NM_Y-10,NM_W,NM_H) = (45,90,225,67) -->
 				<Box X="45" Y="90" W="225" H="67" />
 				<!-- WL_MENU.C:1639-1649: US_Print("How tough are you?") at (NM_X+20, NM_Y-32) =

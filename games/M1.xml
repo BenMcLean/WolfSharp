@@ -269,7 +269,7 @@ this file. -->
 			</Menu>
 			<!-- Spear skips Wolf3D episode selection and goes straight to skill choice. -->
 			<Menu Name="NewGame" X="50" Y="100" Indent="0" Spacing="13" CurPos="2" CursorPic=""
-				SelectSound="SHOOTDOORSND">
+				SelectSound="SHOOTSND">
 				<Picture Name="C_BACKDROPPIC" X="0" Y="0" />
 				<Picture Name="C_MOUSELBACKPIC" X="112" Y="184">
 					NavigateToMenu("Main")
