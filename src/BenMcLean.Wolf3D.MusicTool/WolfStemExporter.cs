@@ -30,11 +30,32 @@ internal static class WolfStemExporter
 		Directory.CreateDirectory(outDir);
 		foreach (WolfStemGroup group in BuildGroups(map))
 		{
-			short[] samples = RenderStem(song.Imf, group.AdlibChannels);
-			string fileName = $"{group.Program:D3}-{SanitizeFileName(group.PatchName)}-ch{string.Join("+", group.AdlibChannels.Select(channel => channel.ToString("D2")))}.wav";
+			short[] samples = RenderStem(song.Imf, group.RenderChannels);
+			string fileName = BuildStemFileName(group);
 			WavWriter.WriteMono16(Path.Combine(outDir, fileName), SampleRate, AudioPostProcessor.ApplyGainDb(samples, StemGainDb));
 		}
 	}
+
+	public static void ExportWlf(string wlfPath, string midiPath, string patchNamesPath, string outDir)
+	{
+		using FileStream stream = File.OpenRead(wlfPath);
+		Imf[] imf = Imf.ReadImf(stream);
+		Dictionary<int, string> patchNames = LoadPatchNames(patchNamesPath);
+		IReadOnlyList<WolfStemGroup> groups = BuildGroupsFromMidi(midiPath, patchNames);
+
+		Directory.CreateDirectory(outDir);
+		foreach (WolfStemGroup group in groups)
+		{
+			short[] samples = RenderStem(imf, group.RenderChannels);
+			string fileName = BuildStemFileName(group);
+			WavWriter.WriteMono16(Path.Combine(outDir, fileName), SampleRate, AudioPostProcessor.ApplyGainDb(samples, StemGainDb));
+		}
+	}
+
+	private static string BuildStemFileName(WolfStemGroup group) =>
+		group.Program > 0
+			? $"midi-ch{string.Join("+", group.LabelChannels.Select(channel => channel.ToString("D2")))}-gm{group.Program:D3}-{SanitizeFileName(group.PatchName)}.wav"
+			: $"midi-ch{string.Join("+", group.LabelChannels.Select(channel => channel.ToString("D2")))}-{SanitizeFileName(group.PatchName)}.wav";
 
 	private static IReadOnlyList<WolfStemGroup> BuildGroups(WolfStemMap map) =>
 		[.. map.FlStudioPrograms
@@ -42,11 +63,34 @@ internal static class WolfStemExporter
 			.Select(program => new WolfStemGroup(
 				program.Program,
 				program.PatchName,
+				[.. program.AdlibChannels.OrderBy(channel => channel)],
 				[.. program.AdlibChannels.OrderBy(channel => channel)]))];
+
+	private static IReadOnlyList<WolfStemGroup> BuildGroupsFromMidi(string midiPath, IReadOnlyDictionary<int, string> patchNames)
+	{
+		MidiProgramUsage usage = MidiProgramInspector.Inspect(midiPath);
+		static IReadOnlyList<int> GetProgramChannels(MidiProgramUsage usage, int program) =>
+			usage.ProgramChannels.TryGetValue(program, out IReadOnlyList<int>? channels)
+				? [.. channels.OrderBy(channel => channel)]
+				: [];
+		List<WolfStemGroup> groups =
+		[
+			.. usage.Programs
+			.OrderBy(program => program)
+			.Select(program => new WolfStemGroup(
+				program,
+				patchNames.TryGetValue(program, out string? patchName) ? patchName : $"Program_{program:D3}",
+				GetProgramChannels(usage, program),
+				GetProgramChannels(usage, program)))
+		];
+		if (MidiProgramInspector.InspectPercussionNotes(midiPath).Count > 0)
+			groups.Add(new WolfStemGroup(0, "Percussion", [10], [8]));
+		return groups;
+	}
 
 	private static short[] RenderStem(Imf[] imf, IReadOnlyList<int> adlibChannelsOneBased)
 	{
-		HashSet<int> targetChannels = [.. adlibChannelsOneBased.Select(channel => channel - 1)];
+		HashSet<int> targetChannels = [.. adlibChannelsOneBased];
 		WoodyEmulatorOpl opl = new(OplType.Opl2);
 		opl.Init(SampleRate);
 
@@ -126,7 +170,26 @@ internal static class WolfStemExporter
 		return new string(chars).Replace(' ', '_');
 	}
 
-	private sealed record WolfStemGroup(int Program, string PatchName, IReadOnlyList<int> AdlibChannels);
+	private static Dictionary<int, string> LoadPatchNames(string patchNamesPath)
+	{
+		Dictionary<int, string> result = [];
+		foreach (string rawLine in File.ReadLines(patchNamesPath))
+		{
+			string line = rawLine.Trim();
+			if (line.Length == 0 || line.StartsWith('#'))
+				continue;
+			int equalsIndex = line.IndexOf('=');
+			if (equalsIndex <= 0)
+				continue;
+			if (!int.TryParse(line[..equalsIndex], out int program))
+				continue;
+			result[program] = line[(equalsIndex + 1)..].Trim();
+		}
+
+		return result;
+	}
+
+	private sealed record WolfStemGroup(int Program, string PatchName, IReadOnlyList<int> LabelChannels, IReadOnlyList<int> RenderChannels);
 
 	private sealed class WolfStemMap
 	{

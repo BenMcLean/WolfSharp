@@ -21,6 +21,7 @@ Usage:
   BenMcLean.Wolf3D.MusicTool map-wolfmidi-song [options]
   BenMcLean.Wolf3D.MusicTool export-wolfmidi-assets [options]
   BenMcLean.Wolf3D.MusicTool export-wolf-wav-stems [options]
+  BenMcLean.Wolf3D.MusicTool export-wlf-wav-stems [options]
   BenMcLean.Wolf3D.MusicTool convert-midi-to-wlf [options]
   BenMcLean.Wolf3D.MusicTool compare-midi-op2 [options]
   BenMcLean.Wolf3D.MusicTool copy-op2-programs [options]
@@ -96,6 +97,17 @@ Commands:
       --song <name>         IMF song name (default: WONDERIN_MUS)
       --map-json <path>     wolfmidi JSON from export-wolfmidi-assets (default: promo/remix/WONDERIN_MUS.wolfmidi.json)
       --out-dir <dir>       Output directory for WAV stems (default: promo/remix/WONDERIN_MUS.stems)
+
+  export-wlf-wav-stems
+    Replays a standalone WLF/IMF file through the OPL emulator and exports WAV
+    stems grouped by the actual GM programs and MIDI channels used by the source
+    MIDI that produced it.
+
+    Options:
+      --wlf <path>          Input WLF/IMF file path (default: godot/BenMcLean.Wolf3D.Shared/Resources/Wondering About My Remix.wlf)
+      --midi <path>         Source MIDI file path (default: promo/remix/Wondering About My Remix.mid)
+      --patch-names <path>  wolfmidi patch.txt path for friendly names
+      --out-dir <dir>       Output directory for WAV stems (default: promo/remix/Wondering About My Remix.stems)
 
   convert-midi-to-wlf
     Converts an exported MIDI file to Wolf3D WLF/IMF using the open-source
@@ -186,6 +198,7 @@ try
 		"map-wolfmidi-song" => RunMapWolfMidiSong(rest),
 		"export-wolfmidi-assets" => RunExportWolfMidiAssets(rest),
 		"export-wolf-wav-stems" => RunExportWolfWavStems(rest),
+		"export-wlf-wav-stems" => RunExportWlfWavStems(rest),
 		"convert-midi-to-wlf" => RunConvertMidiToWlf(rest),
 		"compare-midi-op2" => RunCompareMidiOp2(rest),
 		"copy-op2-programs" => RunCopyOp2Programs(rest),
@@ -318,6 +331,22 @@ static int RunExportWolfWavStems(string[] args)
 		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultSong}.stems");
 
 	WolfStemExporter.Export(gameXml, song, mapJson, outDir);
+	Console.WriteLine($"Wrote stems to {outDir}");
+	return 0;
+}
+
+static int RunExportWlfWavStems(string[] args)
+{
+	string wlf = GetOption(args, "--wlf") ?? DefaultFinalWlf;
+	string midi = GetOption(args, "--midi")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultRemixBaseName}.mid");
+	string patchNames = GetOption(args, "--patch-names")
+		?? DefaultWolfMidiPatchNames;
+	EnsureDefaultWolfMidiRepo(DefaultWolfMidiInst, patchNames);
+	string outDir = GetOption(args, "--out-dir")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultRemixBaseName}.stems");
+
+	WolfStemExporter.ExportWlf(wlf, midi, patchNames, outDir);
 	Console.WriteLine($"Wrote stems to {outDir}");
 	return 0;
 }
