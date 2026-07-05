@@ -43,6 +43,19 @@ internal static class MidiProgramInspector
 				kvp => (IReadOnlyList<int>)[.. kvp.Value.OrderBy(channel => channel)]));
 	}
 
+	public static IReadOnlyList<int> InspectPercussionNotes(string midiPath)
+	{
+		using FileStream stream = File.OpenRead(midiPath);
+		Midi midi = Midi.Parse(stream);
+
+		HashSet<int> drumNotes = [];
+		foreach (Midi.MidiEvent midiEvent in midi.Events)
+			if (midiEvent is Midi.NoteOnEvent noteOn && noteOn.Channel == 9 && noteOn.Velocity > 0)
+				drumNotes.Add(noteOn.Note);
+
+		return [.. drumNotes.OrderBy(note => note)];
+	}
+
 	public static IReadOnlyList<string> BuildWarnings(MidiProgramUsage actual, IReadOnlyList<int> expectedPrograms)
 	{
 		HashSet<int> actualSet = [.. actual.Programs];

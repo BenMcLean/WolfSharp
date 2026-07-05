@@ -22,6 +22,9 @@ Usage:
   BenMcLean.Wolf3D.MusicTool export-wolfmidi-assets [options]
   BenMcLean.Wolf3D.MusicTool export-wolf-wav-stems [options]
   BenMcLean.Wolf3D.MusicTool convert-midi-to-wlf [options]
+  BenMcLean.Wolf3D.MusicTool compare-midi-op2 [options]
+  BenMcLean.Wolf3D.MusicTool copy-op2-programs [options]
+  BenMcLean.Wolf3D.MusicTool inspect-midi-channels [options]
   BenMcLean.Wolf3D.MusicTool export-noah-drums [options]
   BenMcLean.Wolf3D.MusicTool export-cmf-drums [options]
 
@@ -115,6 +118,35 @@ Commands:
       --remarks <text>         IMF type-1 remarks tag
       --program <text>         IMF type-1 program tag
 
+  compare-midi-op2
+    Audits which melodic instruments your MIDI actually uses and compares the
+    current OP2 bank slots against a reference OP2 bank such as the extracted
+    WONDERIN_MUS bank. The report distinguishes exact same-program matches,
+    exact matches to a different original program slot, and truly different
+    patches. It also prints the MIDI percussion notes in use.
+
+    Options:
+      --midi <path>      Input MIDI file path (default: promo/remix/Wondering About My Remix.mid)
+      --op2 <path>       OP2 bank to audit (default: promo/remix/Wondering About My Remix.op2)
+      --ref-op2 <path>   Reference OP2 bank (default: promo/remix/WONDERIN_MUS.wolfmidi.op2)
+
+  copy-op2-programs
+    Copies selected melodic program slots from one OP2 bank into another. Use
+    this to make chosen remix instruments exactly match a reference song while
+    leaving bass or percussion slots untouched.
+
+    Options:
+      --src-op2 <path>   Source/reference OP2 bank
+      --dst-op2 <path>   Destination OP2 bank to modify
+      --map <list>       Comma-separated mappings like 041=041,042=041,043=041,053,061,083
+
+  inspect-midi-channels
+    Prints the actual MIDI channel usage: program numbers, note counts, note
+    range, and first note event for each used melodic channel plus used drum notes.
+
+    Options:
+      --midi <path>      Input MIDI file path (default: promo/remix/Wondering About My Remix.mid)
+
   export-noah-drums
     Emits a clearly-labeled Noah percussion source bundle for remix work:
     a percussion OP2 approximation bank plus a JSON report. WAV previews are
@@ -155,6 +187,9 @@ try
 		"export-wolfmidi-assets" => RunExportWolfMidiAssets(rest),
 		"export-wolf-wav-stems" => RunExportWolfWavStems(rest),
 		"convert-midi-to-wlf" => RunConvertMidiToWlf(rest),
+		"compare-midi-op2" => RunCompareMidiOp2(rest),
+		"copy-op2-programs" => RunCopyOp2Programs(rest),
+		"inspect-midi-channels" => RunInspectMidiChannels(rest),
 		"export-noah-drums" => RunExportNoahDrums(rest),
 		"export-cmf-drums" => RunExportCmfDrums(rest),
 		_ => throw new ArgumentException($"Unknown command '{command}'.")
@@ -373,6 +408,44 @@ static int RunConvertMidiToWlf(string[] args)
 		remarks,
 		program);
 	Console.WriteLine($"Wrote {outWlf}");
+	return 0;
+}
+
+static int RunCompareMidiOp2(string[] args)
+{
+	string midi = GetOption(args, "--midi")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultRemixBaseName}.mid");
+	string op2 = GetOption(args, "--op2")
+		?? DefaultCustomOp2;
+	string refOp2 = GetOption(args, "--ref-op2")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultSong}.wolfmidi.op2");
+
+	foreach (string line in MidiOp2Comparer.BuildReport(midi, op2, refOp2))
+		Console.WriteLine(line);
+	return 0;
+}
+
+static int RunCopyOp2Programs(string[] args)
+{
+	string srcOp2 = GetOption(args, "--src-op2")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultSong}.wolfmidi.op2");
+	string dstOp2 = GetOption(args, "--dst-op2")
+		?? DefaultCustomOp2;
+	string map = GetOption(args, "--map")
+		?? "041=041,042=041,043=041,053,061,083";
+
+	foreach (string line in Op2ProgramCopier.Copy(srcOp2, dstOp2, map))
+		Console.WriteLine(line);
+	return 0;
+}
+
+static int RunInspectMidiChannels(string[] args)
+{
+	string midi = GetOption(args, "--midi")
+		?? Path.Combine(DefaultPromoRemixDir, $"{DefaultRemixBaseName}.mid");
+
+	foreach (string line in MidiChannelInspector.BuildReport(midi))
+		Console.WriteLine(line);
 	return 0;
 }
 
