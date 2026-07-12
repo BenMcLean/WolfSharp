@@ -178,6 +178,9 @@ void sky() {
 	private readonly StatusBarController _statusBarController;
 	private readonly StatusBarRenderer _statusBarRenderer;
 	private CanvasLayer _statusBarCanvas;
+	private CanvasLayer _automapCanvas;
+	private Control _weaponHudOverlay;
+	private bool _hudVisible = true;
 	private AutomapController _automapController;
 	private WristwatchDisplay _wristwatchDisplay;
 	private bool _rightAxPressed,
@@ -579,7 +582,7 @@ void sky() {
 						TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
 					};
 					_statusBarCanvas.AddChild(statusBarDisplay);
-					Control weaponHudOverlay = new()
+					_weaponHudOverlay = new()
 					{
 						Name = "WeaponHudOverlay",
 						AnchorLeft = 0.5f,
@@ -593,8 +596,8 @@ void sky() {
 						MouseFilter = Control.MouseFilterEnum.Ignore,
 						ZIndex = 20,
 					};
-					_statusBarCanvas.AddChild(weaponHudOverlay);
-					_weapons.AttachHud(weaponHudOverlay);
+					_statusBarCanvas.AddChild(_weaponHudOverlay);
+					_weapons.AttachHud(_weaponHudOverlay);
 				}
 				SubViewport automapVP = new()
 				{
@@ -604,13 +607,13 @@ void sky() {
 					RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
 				};
 				automapVP.AddChild(_automapController.Renderer);
-				CanvasLayer automapCanvas = new()
+				_automapCanvas = new()
 				{
 					Name = "AutomapCanvas",
 					Layer = 10,
 				};
-				AddChild(automapCanvas);
-				automapCanvas.AddChild(automapVP);
+				AddChild(_automapCanvas);
+				_automapCanvas.AddChild(automapVP);
 				TextureRect automapDisplay = new()
 				{
 					Name = "AutomapDisplay",
@@ -627,7 +630,7 @@ void sky() {
 					OffsetBottom = AutomapRenderer.ViewHeight * 2,
 					TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
 				};
-				automapCanvas.AddChild(automapDisplay);
+				_automapCanvas.AddChild(automapDisplay);
 			}
 			else if (_statusBarRenderer is not null &&
 				// VR: display status bar and automap as a wristwatch on the left hand.
@@ -670,6 +673,28 @@ void sky() {
 					TriggerMaxResourcesCheat();
 					return;
 				}
+			}
+			// H toggles HUD visibility (status bar, weapon, automap) for screenshots. Flatscreen only.
+			if (keyEvent.Keycode == Key.H && !_displayMode.IsVRActive)
+			{
+				_hudVisible = !_hudVisible;
+				if (_statusBarCanvas is not null)
+					_statusBarCanvas.Visible = _hudVisible;
+				if (_automapCanvas is not null)
+					_automapCanvas.Visible = _hudVisible;
+				return;
+			}
+			// Alt+Enter toggles fullscreen (forcing 1920x1080 when entering). Flatscreen only.
+			if (FullscreenToggle.IsToggleEvent(keyEvent) && !_displayMode.IsVRActive)
+			{
+				FullscreenToggle.Toggle();
+				return;
+			}
+			// P saves a screenshot.
+			if (ScreenshotHelper.IsCaptureEvent(keyEvent))
+			{
+				ScreenshotHelper.Capture(GetViewport());
+				return;
 			}
 			// Weapon switching - number keys map directly to weapon numbers from XML
 			// Based on WL_AGENT.C weapon selection (bt_readyknife, bt_readypistol, etc.)

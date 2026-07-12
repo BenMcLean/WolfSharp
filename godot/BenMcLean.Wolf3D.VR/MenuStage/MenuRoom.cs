@@ -975,9 +975,26 @@ void sky() {
 		if (_worldEnvironment is not null)
 			_worldEnvironment.Environment.BackgroundColor = color;
 	}
-	public override void _Input(InputEvent @event) =>
+	public override void _Input(InputEvent @event)
+	{
+		// Alt+Enter toggles fullscreen (forcing 1920x1080 when entering). Flatscreen only.
+		if (@event is InputEventKey keyEvent && keyEvent.Pressed)
+		{
+			if (FullscreenToggle.IsToggleEvent(keyEvent) && !_displayMode.IsVRActive)
+			{
+				FullscreenToggle.Toggle();
+				return;
+			}
+			// P saves a screenshot.
+			if (ScreenshotHelper.IsCaptureEvent(keyEvent))
+			{
+				ScreenshotHelper.Capture(GetViewport());
+				return;
+			}
+		}
 		// Forward input events to the active input implementation
 		_menuInput?.HandleInput(@event);
+	}
 	public override void _Process(double delta)
 	{
 		if (!_displayMode.IsVRActive)
