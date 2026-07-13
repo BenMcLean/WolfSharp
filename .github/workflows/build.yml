@@ -4,6 +4,14 @@
 #   ANDROID_KEYSTORE_PASSWORD - password for both the keystore and the key
 # If these secrets are absent the Android job will fail; Windows and Linux builds are unaffected.
 # IMPORTANT: keep the original release.keystore file safe - losing it prevents updating existing installs.
+#
+# The Linux job also wraps its export into a portable .AppImage (no extra secrets needed).
+# It's built with appimagetool alone, not linuxdeploy, so it does NOT bundle system shared
+# libraries (Vulkan/Mesa/GL, libc, X11/Wayland, audio) - deliberately, since bundling GPU driver
+# libraries would break hardware acceleration on the host. This assumes those libraries are
+# present on the target system, which holds for SteamOS and any current mainstream distro, but
+# hasn't been verified on real hardware from this environment - test on an actual Steam Deck (or
+# a fresh distro VM) before relying on it.
 name: Build
 
 on:
@@ -28,11 +36,15 @@ jobs:
           - preset: "Windows Desktop"
             name: windows-x64
             output_dir: build/windows
+            release_dir: build/windows
             output_file: BenMcLean.Wolf3D.VR.exe
+            archive_ext: zip
           - preset: "Linux"
             name: linux-x64
             output_dir: build/linux
+            release_dir: build/linux-release
             output_file: BenMcLean.Wolf3D.VR.x86_64
+            archive_ext: tar.gz
 
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +82,8 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/${{ matrix.output_dir }}"
           godot --headless --export-release "${{ matrix.preset }}" "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/${{ matrix.output_file }}"
 
-      - name: Bundle games folder and README
+      - name: Bundle games folder and README (Windows only)
+        if: matrix.name == 'windows-x64'
         run: |
           mkdir -p "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/games"
           cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/games/GAMES.md"
@@ -78,10 +91,59 @@ jobs:
             cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/README.md"
           fi
 
+      - name: Assemble AppDir
+        if: matrix.name == 'linux-x64'
+        run: |
+          APPDIR="$GITHUB_WORKSPACE/build/AppDir"
+          mkdir -p "$APPDIR/usr/bin"
+          cp -r "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/." "$APPDIR/usr/bin/"
+          cat > "$APPDIR/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/BenMcLean.Wolf3D.VR.x86_64" "$@"
+          EOF
+          chmod +x "$APPDIR/AppRun"
+          cp "$GITHUB_WORKSPACE/promo/icon/icon256.png" "$APPDIR/net.benmclean.wolf3d.png"
+          cat > "$APPDIR/net.benmclean.wolf3d.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Wolfenstein 3-D
+          Exec=AppRun
+          Icon=net.benmclean.wolf3d
+          Categories=Game;ActionGame;
+          Terminal=false
+          EOF
+
+      - name: Build AppImage
+        if: matrix.name == 'linux-x64'
+        run: |
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          chmod +x appimagetool
+          mkdir -p "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games"
+          # --appimage-extract-and-run avoids needing FUSE, which isn't available on GH-hosted runners
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run \
+            "$GITHUB_WORKSPACE/build/AppDir" \
+            "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/BenMcLean.Wolf3D.VR-x86_64.AppImage"
+          cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games/GAMES.md"
+          if [ -f "$GITHUB_WORKSPACE/README.md" ]; then
+            cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/README.md"
+          fi
+
+      - name: Package release archive
+        env:
+          ARCHIVE_NAME: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}
+        run: |
+          cd "$GITHUB_WORKSPACE/${{ matrix.release_dir }}"
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            zip -qr "$GITHUB_WORKSPACE/$ARCHIVE_NAME.zip" .
+          else
+            tar -czf "$GITHUB_WORKSPACE/$ARCHIVE_NAME.tar.gz" .
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}
-          path: ${{ matrix.output_dir }}/
+          path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}.${{ matrix.archive_ext }}
 
   export-android:
     name: Export Android (Meta Quest)

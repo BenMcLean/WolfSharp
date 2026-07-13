@@ -42,6 +42,8 @@ public static class RuntimeOptions
 	/// Defaults:
 	///   Android (Quest): /sdcard/WOLF3D
 	///   Editor: ../../games relative to CWD (resolves to repo games/ folder)
+	///   Linux AppImage: games/ subfolder next to the .AppImage file itself, not the temporary
+	///     FUSE mount OS.GetExecutablePath() would otherwise resolve to
 	///   PC export: games/ subfolder next to the executable
 	/// </summary>
 	public static string Path
@@ -63,11 +65,21 @@ public static class RuntimeOptions
 	private static string ResolveGamesPath(string path) =>
 		System.IO.Path.IsPathRooted(path)
 			? path
-			: System.IO.Path.GetFullPath(path, System.IO.Path.GetDirectoryName(OS.GetExecutablePath()));
+			: System.IO.Path.GetFullPath(path, BaseDir());
 	private static string DefaultGamesDir() =>
 		OS.HasFeature("android") ? "/sdcard/WOLF3D"
 		: OS.HasFeature("editor") ? System.IO.Path.GetFullPath(System.IO.Path.Combine("..", "..", "games"))
-		: System.IO.Path.Combine(System.IO.Path.GetDirectoryName(OS.GetExecutablePath()), "games");
+		: System.IO.Path.Combine(BaseDir(), "games");
+	/// <summary>
+	/// Directory used as the base for relative --path arguments and the default games folder.
+	/// When running from an AppImage, OS.GetExecutablePath() resolves to a temporary, read-only
+	/// FUSE mount rather than the .AppImage file's actual location, so the AppImage runtime's
+	/// APPIMAGE environment variable (absolute path to the .AppImage file) is used instead.
+	/// </summary>
+	private static string BaseDir() =>
+		System.Environment.GetEnvironmentVariable("APPIMAGE") is string appImagePath && appImagePath.Length > 0
+			? System.IO.Path.GetDirectoryName(appImagePath)
+			: System.IO.Path.GetDirectoryName(OS.GetExecutablePath());
 	private static bool IsTruthy(string value) =>
 		!string.IsNullOrWhiteSpace(value) &&
 		value.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on";
