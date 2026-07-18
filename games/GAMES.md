@@ -1,6 +1,9 @@
 The [Wolfenstein 3-D Shareware v1.4](https://archive.org/download/Wolfenstein3d/Wolfenstein3dV14sw.ZIP) game data created by id Software and published by Apogee is included under its original shareware redistribution permission from 1992. No other game data is included in official builds. Users supply their own game data to play anything else.
 
-To install other game data, create subfolders under "games" (On Android, the subfolders go under `/sdcard/WOLF3D`) for each title:
+On PC, a subfolder should be created for each game under a "games" folder placed next to the executable.
+
+On Android, the subfolders go under `/sdcard/WOLF3D`.
+
 |Title|Subfolder|File extension|
 |---|---|---|
 |Wolfenstein 3-D Shareware|`WL1`|`*.WL1`|

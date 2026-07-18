@@ -1,6 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- Base Spear of Destiny game definition. Future Mission 2 / Mission 3 variants should derive from
-this file. -->
 <Game Name="Spear of Destiny" Path="M1" Extension="SOD" Exe="Spear.exe" HighScores="CONFIG.SOD"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="WOLF3D.xsd">
 	<OnStartup>LoadMenu("Rating")</OnStartup>
