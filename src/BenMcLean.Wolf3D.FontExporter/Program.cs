@@ -24,10 +24,12 @@ XElement xml = GameXmlResolver.Load(fullXmlPath);
 string xmlDirectory = Path.GetDirectoryName(fullXmlPath) ?? Directory.GetCurrentDirectory();
 string gameDataDirectory = Path.Combine(xmlDirectory, xml.Attribute("Path")?.Value ?? string.Empty);
 
-// Default output: promo/fonts alongside the games/ folder (i.e. one level up from games/)
+string repositoryRoot = FindRepositoryRoot();
+
+// Default output: always target this repo's promo/fonts folder.
 string outputFolder = args.Length > 1
 	? args[1]
-	: Path.GetFullPath(Path.Combine(xmlDirectory, "..", "promo", "fonts"));
+	: Path.Combine(repositoryRoot, "promo", "fonts");
 
 AssetManager assetManager;
 if (HasRequiredVgaGraphFiles(xml, gameDataDirectory))
@@ -99,24 +101,34 @@ string python = FindPython();
 bool anyFailed = false;
 foreach (string jsonPath in exportedJsonPaths)
 {
-	string woff2Path = Path.ChangeExtension(jsonPath, ".woff2");
+	List<string> outputPaths =
+	[
+		Path.ChangeExtension(jsonPath, ".woff2"),
+		Path.ChangeExtension(jsonPath, ".ttf"),
+	];
+	bool fontFailed = false;
 	try
 	{
-		using Process process = new();
-		process.StartInfo.FileName = python;
-		process.StartInfo.UseShellExecute = false;
-		process.StartInfo.ArgumentList.Add(scriptPath);
-		process.StartInfo.ArgumentList.Add(jsonPath);
-		process.StartInfo.ArgumentList.Add(woff2Path);
-		process.Start();
-		process.WaitForExit();
-		if (process.ExitCode == 0)
-			File.Delete(jsonPath);
-		else
+		foreach (string outputPath in outputPaths)
 		{
-			Console.Error.WriteLine($"ERROR: Python conversion failed for {Path.GetFileName(jsonPath)}. JSON kept.");
-			anyFailed = true;
+			using Process process = new();
+			process.StartInfo.FileName = python;
+			process.StartInfo.UseShellExecute = false;
+			process.StartInfo.ArgumentList.Add(scriptPath);
+			process.StartInfo.ArgumentList.Add(jsonPath);
+			process.StartInfo.ArgumentList.Add(outputPath);
+			process.Start();
+			process.WaitForExit();
+			if (process.ExitCode != 0)
+			{
+				Console.Error.WriteLine($"ERROR: Python conversion failed for {Path.GetFileName(outputPath)}. JSON kept.");
+				anyFailed = true;
+				fontFailed = true;
+				break;
+			}
 		}
+		if (!fontFailed)
+			File.Delete(jsonPath);
 	}
 	catch (Exception ex)
 	{
@@ -143,7 +155,8 @@ static string FindPython()
 			probe.StartInfo.UseShellExecute = false;
 			probe.StartInfo.RedirectStandardOutput = true;
 			probe.StartInfo.RedirectStandardError = true;
-			probe.StartInfo.ArgumentList.Add("--version");
+			probe.StartInfo.ArgumentList.Add("-c");
+			probe.StartInfo.ArgumentList.Add("import fontTools");
 			probe.Start();
 			probe.WaitForExit();
 			if (probe.ExitCode == 0)
@@ -152,6 +165,23 @@ static string FindPython()
 		catch (Exception) { }
 	}
 	return "python3";
+}
+
+static string FindRepositoryRoot()
+{
+	foreach (string startPath in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+	{
+		DirectoryInfo? directory = new(Path.GetFullPath(startPath));
+		while (directory is not null)
+		{
+			if (File.Exists(Path.Combine(directory.FullName, "BenMcLean.Wolf3D.sln")))
+				return directory.FullName;
+			directory = directory.Parent;
+		}
+	}
+
+	throw new DirectoryNotFoundException(
+		"Could not locate repository root containing BenMcLean.Wolf3D.sln.");
 }
 
 static bool HasRequiredVgaGraphFiles(XElement xml, string folder)

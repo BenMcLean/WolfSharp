@@ -1,6 +1,6 @@
 """
-Converts Wolf3D chunk font JSON (from FontExporter) to WOFF2.
-Usage: python wolf3d_font_to_woff2.py <font.json> [output.woff2]
+Converts Wolf3D chunk font JSON (from FontExporter) to WOFF2 or TTF.
+Usage: python wolf3d_font_to_woff2.py <font.json> [output.woff2|output.ttf]
 
 Dependencies (Python 3 packages):
   pip install fonttools brotli
@@ -25,6 +25,8 @@ import json
 import sys
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.ttLib import newTable
+from fontTools.ttLib.tables import E_B_D_T_, E_B_L_C_, BitmapGlyphMetrics
 
 # 320x200 at 4:3: pixel aspect ratio = (4/3) * (200/320) = 5:6
 # Pixels are 6/5 taller than wide.
@@ -70,7 +72,38 @@ def shift_pixels_to_vertical_center(pixels, width, height):
 	return new_pixels
 
 
-def build_woff2(font_json_path, output_path):
+def build_bitmap_rows(pixels, width, height):
+	"""Convert a flat 1-bit pixel array into byte-aligned rows, MSB-first."""
+	rows = []
+	row_bytes = (width + 7) // 8
+	for row in range(height):
+		row_data = bytearray(row_bytes)
+		for col in range(width):
+			if pixels[row * width + col]:
+				row_data[col // 8] |= 1 << (7 - (col % 8))
+		rows.append(bytes(row_data))
+	return rows
+
+
+def build_notdef_pixels(height):
+	"""Create a simple box-outline notdef glyph."""
+	width = max(1, height)
+	pixels = [0] * (width * height)
+	if width == 1 or height == 1:
+		return width, [1] * (width * height)
+	for row in range(height):
+		for col in range(width):
+			if row in (0, height - 1) or col in (0, width - 1):
+				pixels[row * width + col] = 1
+	return width, pixels
+
+
+def build_empty_glyph():
+	pen = TTGlyphPen(None)
+	return pen.glyph()
+
+
+def build_font(font_json_path):
 	with open(font_json_path, 'r', encoding='utf-8') as f:
 		data = json.load(f)
 
@@ -81,10 +114,11 @@ def build_woff2(font_json_path, output_path):
 
 	glyphs_by_cp = {g['Codepoint']: g for g in data['Glyphs']}
 
-	glyph_order = ['.notdef']
+	glyph_order = ['.notdef', '.null']
 	cmap = {}
 	glyph_objects = {}
 	metrics = {}
+	bitmap_sources = {}
 
 	# .notdef: thin rectangle outline, proportioned for the 4:3 pixel grid
 	notdef_pen = TTGlyphPen(None)
@@ -96,6 +130,11 @@ def build_woff2(font_json_path, output_path):
 	notdef_pen.closePath()
 	glyph_objects['.notdef'] = notdef_pen.glyph()
 	metrics['.notdef'] = (notdef_w, 0)
+	notdef_bitmap_width, notdef_bitmap_pixels = build_notdef_pixels(height)
+	bitmap_sources['.notdef'] = (notdef_bitmap_width, notdef_bitmap_pixels)
+	glyph_objects['.null'] = build_empty_glyph()
+	metrics['.null'] = (0, 0)
+	bitmap_sources['.null'] = (1, [0] * height)
 
 	# Game-internal codepoints with no correct Unicode mapping — handled selectively below.
 	GAME_INTERNAL = set(range(128, 141))
@@ -105,11 +144,13 @@ def build_woff2(font_json_path, output_path):
 		if cp in GAME_INTERNAL:
 			continue
 		g = glyphs_by_cp[cp]
-		name = f'uni{cp:04X}'
+		name = 'space' if cp == 0x20 else f'uni{cp:04X}'
 		glyph_order.append(name)
 		cmap[cp] = name
 		glyph_objects[name] = glyph_from_pixels(g['Pixels'], g['Width'], height)
-		metrics[name] = (g['Width'] * SCALE_X, 0)
+		lsb = getattr(glyph_objects[name], 'xMin', 0)
+		metrics[name] = (g['Width'] * SCALE_X, lsb)
+		bitmap_sources[name] = (g['Width'], g['Pixels'])
 
 	# Codepoint 139: horizontal rule -> em dash (U+2014) and en dash (U+2013).
 	# Only present in SMALL; BIG falls back to the hyphen alias below.
@@ -118,9 +159,10 @@ def build_woff2(font_json_path, output_path):
 		dash_name = 'wolf3d_dash'
 		glyph_order.append(dash_name)
 		glyph_objects[dash_name] = glyph_from_pixels(g['Pixels'], g['Width'], height)
-		metrics[dash_name] = (g['Width'] * SCALE_X, 0)
+		metrics[dash_name] = (g['Width'] * SCALE_X, getattr(glyph_objects[dash_name], 'xMin', 0))
 		cmap[0x2013] = dash_name  # en dash
 		cmap[0x2014] = dash_name  # em dash
+		bitmap_sources[dash_name] = (g['Width'], g['Pixels'])
 
 	# Codepoint 140: circle/ring -> copyright symbol (U+00A9).
 	# Only present in SMALL.
@@ -129,8 +171,9 @@ def build_woff2(font_json_path, output_path):
 		copyright_name = 'wolf3d_copyright'
 		glyph_order.append(copyright_name)
 		glyph_objects[copyright_name] = glyph_from_pixels(g['Pixels'], g['Width'], height)
-		metrics[copyright_name] = (g['Width'] * SCALE_X, 0)
+		metrics[copyright_name] = (g['Width'] * SCALE_X, getattr(glyph_objects[copyright_name], 'xMin', 0))
 		cmap[0x00A9] = copyright_name
+		bitmap_sources[copyright_name] = (g['Width'], g['Pixels'])
 
 	# Aliases: map Unicode characters to existing ASCII glyphs via cmap only.
 	# Each entry is skipped if the target was already assigned above.
@@ -154,40 +197,123 @@ def build_woff2(font_json_path, output_path):
 		glyph_order.append(bullet_name)
 		cmap[0x2022] = bullet_name
 		glyph_objects[bullet_name] = glyph_from_pixels(bullet_pixels, period['Width'], height)
-		metrics[bullet_name] = (period['Width'] * SCALE_X, 0)
+		metrics[bullet_name] = (period['Width'] * SCALE_X, getattr(glyph_objects[bullet_name], 'xMin', 0))
+		bitmap_sources[bullet_name] = (period['Width'], bullet_pixels)
 
 	fb = FontBuilder(upm, isTTF=True)
 	fb.setupGlyphOrder(glyph_order)
 	fb.setupCharacterMap(cmap)
 	fb.setupGlyf(glyph_objects)
 	fb.setupHorizontalMetrics(metrics)
-	fb.setupHorizontalHeader(ascent=upm, descent=0)
+	family_name = f'Wolfenstein {font_name}'
+	style_name = 'Regular'
+	version = '1.0'
+	descent = -SCALE_Y
+	ascent = upm + descent
+	fb.setupHorizontalHeader(ascent=ascent, descent=descent)
 	fb.setupNameTable({
-		'familyName': f'Wolf3D {font_name}',
-		'styleName': 'Regular',
+		'familyName': family_name,
+		'styleName': style_name,
+		'uniqueFontIdentifier': f'BenMcLean.Wolf3D.FontExporter: {family_name}.{style_name}',
+		'fullName': family_name,
+		'psName': family_name.replace(' ', ''),
+		'version': f'Version {version}',
 	})
 	fb.setupOS2(
-		sTypoAscender=upm,
-		sTypoDescender=0,
+		sTypoAscender=ascent,
+		sTypoDescender=descent,
 		sTypoLineGap=SCALE_Y,
-		usWinAscent=upm,
-		usWinDescent=0,
+		usWinAscent=ascent,
+		usWinDescent=-descent,
 		sxHeight=upm * 2 // 3,
 		sCapHeight=upm,
 		fsType=0,
+		fsSelection=0x40,
+		achVendID='BMLN',
+		usBreakChar=32,
 	)
 	fb.setupPost()
 	fb.setupHead(unitsPerEm=upm)
+	return fb.font, font_name, height, bitmap_sources
 
-	fb.font.flavor = 'woff2'
-	fb.font.save(output_path)
-	print(f'Saved {output_path}  (height={height}px, use CSS font-size: {height * SCALE_Y}px or multiples of {SCALE_Y}px)')
+
+def add_bitmap_strike(ttfont, height, bitmap_sources):
+	"""Attach a monochrome embedded bitmap strike for crisp native-size Windows rendering."""
+	eblc = newTable('EBLC')
+	eblc.version = 2.0
+
+	strike = E_B_L_C_.Strike()
+	size_table = strike.bitmapSizeTable
+	size_table.colorRef = 0
+	size_table.ppemX = height
+	size_table.ppemY = height
+	size_table.bitDepth = 1
+	size_table.flags = 1  # horizontal metrics
+
+	width_max = max(width for width, _pixels in bitmap_sources.values())
+	for direction in ('hori', 'vert'):
+		metrics = E_B_L_C_.SbitLineMetrics()
+		metrics.ascender = height
+		metrics.descender = 0
+		metrics.widthMax = width_max
+		metrics.caretSlopeNumerator = 1
+		metrics.caretSlopeDenominator = 0
+		metrics.caretOffset = 0
+		metrics.minOriginSB = 0
+		metrics.minAdvanceSB = 0
+		metrics.maxBeforeBL = height
+		metrics.minAfterBL = 0
+		metrics.pad1 = 0
+		metrics.pad2 = 0
+		setattr(size_table, direction, metrics)
+
+	index_sub_table = E_B_L_C_.eblc_index_sub_table_1(None, ttfont)
+	index_sub_table.indexFormat = 1
+	index_sub_table.imageFormat = 1
+	index_sub_table.imageDataOffset = 0
+	index_sub_table.names = list(ttfont.getGlyphOrder())
+	strike.indexSubTables.append(index_sub_table)
+	eblc.strikes = [strike]
+
+	ebdt = newTable('EBDT')
+	ebdt.version = 2.0
+	strike_data = {}
+	for glyph_name in index_sub_table.names:
+		width, pixels = bitmap_sources[glyph_name]
+		bitmap = E_B_D_T_.ebdt_bitmap_format_1(None, None)
+		metrics = BitmapGlyphMetrics.SmallGlyphMetrics()
+		metrics.height = height
+		metrics.width = width
+		metrics.BearingX = 0
+		metrics.BearingY = height
+		metrics.Advance = width
+		bitmap.metrics = metrics
+		bitmap.setRows(build_bitmap_rows(pixels, width, height), bitDepth=1, metrics=metrics)
+		strike_data[glyph_name] = bitmap
+	ebdt.strikeData = [strike_data]
+
+	ttfont['EBLC'] = eblc
+	ttfont['EBDT'] = ebdt
+
+
+def build_font_file(font_json_path, output_path):
+	ttfont, font_name, height, bitmap_sources = build_font(font_json_path)
+	lower_output = output_path.lower()
+	if lower_output.endswith('.woff2'):
+		ttfont.flavor = 'woff2'
+		ttfont.save(output_path)
+		print(f'Saved {output_path}  (height={height}px, use CSS font-size: {height * SCALE_Y}px or multiples of {SCALE_Y}px)')
+	elif lower_output.endswith('.ttf'):
+		ttfont.save(output_path)
+		print(f'Saved {output_path}  (Windows-compatible outline TTF named {font_name})')
+	else:
+		raise ValueError(f'Unsupported output format for {output_path}. Expected .woff2 or .ttf')
 
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
-		print('Usage: python wolf3d_font_to_woff2.py <font.json> [output.woff2]')
+		print('Usage: python wolf3d_font_to_woff2.py <font.json> [output.woff2|output.ttf]')
 		sys.exit(1)
 	json_path = sys.argv[1]
 	out_path = sys.argv[2] if len(sys.argv) > 2 else json_path.replace('.json', '.woff2')
-	build_woff2(json_path, out_path)
+	build_font_file(json_path, out_path)
