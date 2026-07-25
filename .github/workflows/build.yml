@@ -12,6 +12,33 @@
 # present on the target system, which holds for SteamOS and any current mainstream distro, but
 # hasn't been verified on real hardware from this environment - test on an actual Steam Deck (or
 # a fresh distro VM) before relying on it.
+#
+# HOW TO CUT A RELEASE:
+#   Push (or create, in the GitHub web UI under Releases -> Tags) a tag whose name starts with a
+#   lowercase "v", e.g. "v0.1.0". Everything after the "v" becomes the release version number, so
+#   the tag "v0.1.0" produces version "0.1.0" and a release named "v0.1.0".
+#     git tag v0.1.0
+#     git push origin v0.1.0
+#   That push triggers this workflow automatically: it builds Windows, Linux, and Android, then
+#   the "release" job downloads all three build artifacts, creates a GitHub Release for that tag,
+#   and attaches the build files. Nothing further is needed - the Release goes up as soon as all
+#   three builds finish. To add hand-written release notes afterward, edit the published release
+#   in the GitHub web UI.
+#
+# HOW TO GET A PREVIEW BUILD (no release, no tag):
+#   1. In the GitHub web UI, go to Actions -> "Build" (this workflow) in the left sidebar.
+#   2. Click "Run workflow" (top right of the runs list).
+#   3. Pick the branch to build from, enter a throwaway version string (e.g. "0.0.0-preview" or a
+#      date/commit stamp) in the "Version number" field, and click the green "Run workflow" button.
+#   4. Wait for both the "Export <platform>" jobs and "Export Android (Meta Quest)" to finish
+#      (green checks). Each produces one artifact: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
+#      ..._linux-x64_v<version>.tar.gz, and ..._android-meta-quest_v<version>.apk.
+#   5. Open the completed run's summary page and download each artifact under "Artifacts".
+#      GitHub Actions artifacts are zipped again on download, so unzip once to get the real file.
+#   Manually running the workflow this way never creates a GitHub Release (that only happens from
+#   a "v*" tag push, per the "release" job's `if:` condition) - it's just the build outputs to
+#   download and test locally. Old preview artifacts expire automatically (GitHub's default
+#   artifact retention period) and never need cleanup.
 name: Build
 
 on:
@@ -21,13 +48,33 @@ on:
         description: "Version number (e.g. 0.1.0)"
         required: true
         type: string
+  push:
+    tags:
+      - "v*"
 
 env:
   GODOT_VERSION: "4.5.1"
 
 jobs:
+  determine-version:
+    name: Determine version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
   export:
     name: Export ${{ matrix.name }}
+    needs: determine-version
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -131,7 +178,7 @@ jobs:
 
       - name: Package release archive
         env:
-          ARCHIVE_NAME: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}
+          ARCHIVE_NAME: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
         run: |
           cd "$GITHUB_WORKSPACE/${{ matrix.release_dir }}"
           if [ "${{ matrix.archive_ext }}" = "zip" ]; then
@@ -142,11 +189,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}
-          path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ inputs.version }}.${{ matrix.archive_ext }}
+          name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
+          path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}.${{ matrix.archive_ext }}
 
   export-android:
     name: Export Android (Meta Quest)
+    needs: determine-version
     runs-on: ubuntu-latest
 
     steps:
@@ -244,5 +292,25 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ inputs.version }}
+          name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}
           path: build/android/BenMcLean.Wolf3D.VR.apk
+
+  release:
+    name: Create Release
+    needs: [determine-version, export, export-android]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: artifacts/*/*
