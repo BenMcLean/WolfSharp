@@ -5,6 +5,14 @@
 # If these secrets are absent the Android job will fail; Windows and Linux builds are unaffected.
 # IMPORTANT: keep the original release.keystore file safe - losing it prevents updating existing installs.
 #
+# Required repository secret for the itch-release job:
+#   BUTLER_API_KEY - itch.io API key with permission to push builds, from
+#                    https://itch.io/user/settings/api-keys
+# If this secret is absent the itch-release job will fail; the GitHub Release is unaffected.
+# This job pushes to https://benmclean.itch.io/wolfsharp using itch.io's "butler" CLI, one
+# channel per platform (windows-x64, linux-x64, android-meta-quest). It only runs on tag pushes,
+# same as the GitHub Release job, and only after all builds succeed.
+#
 # The Linux job also wraps its export into a portable .AppImage (no extra secrets needed).
 # It's built with appimagetool alone, not linuxdeploy, so it does NOT bundle system shared
 # libraries (Vulkan/Mesa/GL, libc, X11/Wayland, audio) - deliberately, since bundling GPU driver
@@ -314,3 +322,41 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: artifacts/*/*
+
+  itch-release:
+    name: Push to itch.io
+    needs: [determine-version, export, export-android]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.determine-version.outputs.version }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      ITCH_TARGET: benmclean/wolfsharp
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Install butler
+        run: |
+          curl -sL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+          ./butler/butler -V
+
+      - name: Push Windows build
+        run: |
+          mkdir -p push/windows-x64
+          unzip -q "artifacts/BenMcLean.Wolf3D.VR_windows-x64_v${VERSION}/BenMcLean.Wolf3D.VR_windows-x64_v${VERSION}.zip" -d push/windows-x64
+          ./butler/butler push push/windows-x64 "$ITCH_TARGET:windows-x64" --userversion "$VERSION"
+
+      - name: Push Linux build
+        run: |
+          mkdir -p push/linux-x64
+          tar -xzf "artifacts/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}.tar.gz" -C push/linux-x64
+          ./butler/butler push push/linux-x64 "$ITCH_TARGET:linux-x64" --userversion "$VERSION"
+
+      - name: Push Android build
+        run: |
+          ./butler/butler push "artifacts/BenMcLean.Wolf3D.VR_android-meta-quest_v${VERSION}/BenMcLean.Wolf3D.VR.apk" "$ITCH_TARGET:android-meta-quest" --userversion "$VERSION"
