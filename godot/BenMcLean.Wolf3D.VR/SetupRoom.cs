@@ -26,7 +26,7 @@ namespace BenMcLean.Wolf3D.VR;
 public partial class SetupRoom : Node3D, IRoom
 {
 	public bool SkipFade => true;
-	private enum Phase { NotStarted, ShowingMessage, Loading, Done }
+	private enum Phase { NotStarted, ShowingMessage, Loading, Error, Done }
 	private readonly IDisplayMode _displayMode;
 	private readonly string _xmlPath;
 	private DosScreen _dosScreen;
@@ -75,6 +75,16 @@ public partial class SetupRoom : Node3D, IRoom
 		_dosScreen.WriteLine("Wolfenstein 3-D VR Engine");
 		_dosScreen.WriteLine("=========================");
 		_dosScreen.WriteLine("");
+		// Lets the user retry (e.g. after granting All Files Access and returning to the
+		// app) by pressing any controller button/mouse click instead of force-relaunching.
+		_displayMode.HandButtonPressed += OnHandButtonPressed;
+	}
+	public override void _ExitTree() =>
+		_displayMode.HandButtonPressed -= OnHandButtonPressed;
+	private void OnHandButtonPressed(int handIndex, string buttonName)
+	{
+		if (_phase == Phase.Error)
+			_phase = Phase.NotStarted;
 	}
 	/// <summary>
 	/// Displays an unhandled exception on the DosScreen and halts the loading sequence.
@@ -208,11 +218,11 @@ public partial class SetupRoom : Node3D, IRoom
 				_phase = Phase.Loading;
 				try
 				{
-					// On Android, only request All Files Access for loads that truly need
-					// external storage. Embedded WL1 boot/load can run entirely from
-					// bundled resources.
-					if (SharedAssetManager.RequiresExternalStorage(_xmlPath, preferEmbeddedShareware: IsInitialLoad) &&
-						!AndroidPermissions.HasAllFilesAccess())
+					// On Android, All Files Access is required even for the embedded WL1 boot
+					// load: the game data itself can come from bundled resources, but the
+					// CONFIG/high-scores file always lives on external storage at
+					// /sdcard/WOLF3D/, so every load needs the permission.
+					if (!AndroidPermissions.HasAllFilesAccess())
 					{
 						AndroidPermissions.OpenAllFilesAccessSettings();
 						throw new UnauthorizedAccessException(
@@ -243,7 +253,11 @@ public partial class SetupRoom : Node3D, IRoom
 					if (msg.Length > 2000)
 						msg = msg[..2000];
 					_dosScreen.WriteLine($"ERROR: {msg}");
-					// Stay in Loading — Root will not transition and the error stays visible
+					_dosScreen.WriteLine("Press any button to retry.");
+					// Move to Error (not Loading) so this catch block doesn't re-run every
+					// frame — that would re-open the Android settings screen and flood this
+					// log 60x/second. OnHandButtonPressed() resumes the load on user input.
+					_phase = Phase.Error;
 				}
 				break;
 		}

@@ -51,14 +51,16 @@ public static class RuntimeOptions
 		get
 		{
 			string[] args = GetAllCommandLineArgs();
-			string positional = null;
 			for (int i = 0; i < args.Length; i++)
-			{
 				if (args[i] == "--path" && i < args.Length - 1)
 					return ResolveGamesPath(args[++i]);
-				if (!args[i].StartsWith("--") && !args[i].StartsWith("uid:"))
-					positional ??= args[i];
-			}
+			// Bare positional arguments are only accepted from OS.GetCmdlineUserArgs() (the
+			// args after `--`), never from OS.GetCmdlineArgs(). The latter includes Godot's own
+			// engine/boot arguments (e.g. the Android export's screen/background_color, passed
+			// as a bare value token like "#000000"), and a value belonging to some other flag
+			// would otherwise be misread as a games-directory override.
+			string positional = OS.GetCmdlineUserArgs()
+				.FirstOrDefault(arg => !string.IsNullOrWhiteSpace(arg) && !arg.StartsWith("--") && !arg.StartsWith("uid:"));
 			return positional != null ? ResolveGamesPath(positional) : DefaultGamesDir();
 		}
 	}
@@ -75,9 +77,13 @@ public static class RuntimeOptions
 	/// When running from an AppImage, OS.GetExecutablePath() resolves to a temporary, read-only
 	/// FUSE mount rather than the .AppImage file's actual location, so the AppImage runtime's
 	/// APPIMAGE environment variable (absolute path to the .AppImage file) is used instead.
+	/// On Android, OS.GetExecutablePath() returns an empty string (there is no conventional
+	/// executable path inside an APK), which is not fully qualified and would make
+	/// Path.GetFullPath(path, baseDir) throw, so /sdcard is used as the base there instead.
 	/// </summary>
 	private static string BaseDir() =>
-		System.Environment.GetEnvironmentVariable("APPIMAGE") is string appImagePath && appImagePath.Length > 0
+		OS.HasFeature("android") ? "/sdcard"
+		: System.Environment.GetEnvironmentVariable("APPIMAGE") is string appImagePath && appImagePath.Length > 0
 			? System.IO.Path.GetDirectoryName(appImagePath)
 			: System.IO.Path.GetDirectoryName(OS.GetExecutablePath());
 	private static bool IsTruthy(string value) =>

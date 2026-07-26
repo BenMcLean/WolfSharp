@@ -737,13 +737,6 @@ public static class SharedAssetManager
 			Config.DigiMode = Assets.Gameplay.Config.SDSMode.SoundBlaster;
 		}
 	}
-	public static bool RequiresExternalStorage(string xmlPath, bool preferEmbeddedShareware = false) =>
-		!ShouldUseEmbeddedSharewareData(
-			xmlPath: xmlPath,
-			gameDefinition: GameCatalog.Resolve(
-				xmlPath: xmlPath,
-				preferEmbeddedOfficial: preferEmbeddedShareware),
-			preferEmbeddedShareware: preferEmbeddedShareware);
 	private static bool ShouldUseEmbeddedSharewareData(string xmlPath, GameCatalog.GameDefinition gameDefinition, bool preferEmbeddedShareware)
 	{
 		if (!GameCatalog.CanUseEmbeddedSharewareData(gameDefinition))
