@@ -23,7 +23,7 @@ public partial class Fixtures : Node3D
 	/// Delegate that returns the camera's Y-axis rotation angle for billboard effect.
 	/// </summary>
 	private Func<float> _getCameraYRotation;
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> _spriteMaterials;
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> _spriteMaterials;
 	private readonly Dictionary<ushort, List<int>> _instancesByPage = [];
 	/// <summary>
 	/// Creates fixture sprite geometry from map data.
@@ -33,7 +33,7 @@ public partial class Fixtures : Node3D
 	/// <param name="getCameraYRotation">Delegate that returns camera's Y rotation in radians</param>
 	/// <param name="spritePageOffset">VSwap.SpritePage offset (first sprite page number) - no longer used with Dictionary</param>
 	public Fixtures(
-		IReadOnlyDictionary<ushort, StandardMaterial3D> spriteMaterials,
+		IReadOnlyDictionary<ushort, ShaderMaterial> spriteMaterials,
 		IEnumerable<MapAnalysis.StaticSpawn> staticSpawns,
 		Func<float> getCameraYRotation)
 	{
@@ -66,7 +66,7 @@ public partial class Fixtures : Node3D
 		MapAnalysis.StaticSpawn[] fixtures)
 	{
 		// Get material directly by page number (will throw KeyNotFoundException if missing)
-		StandardMaterial3D material = _spriteMaterials[page];
+		ShaderMaterial material = _spriteMaterials[page];
 		// Create MultiMesh
 		MultiMesh multiMesh = new()
 		{

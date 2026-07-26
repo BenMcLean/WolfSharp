@@ -129,7 +129,7 @@ public partial class ActionRoom : Node3D, IRoom
 	public Projectiles Projectiles => _projectiles;
 	public Fixtures Fixtures => _fixtures;
 	public Bonuses Bonuses => _bonuses;
-	public static IReadOnlyDictionary<ushort, StandardMaterial3D> SpriteMaterials => VRAssetManager.SpriteMaterials;
+	public static IReadOnlyDictionary<ushort, ShaderMaterial> SpriteMaterials => VRAssetManager.SpriteMaterials;
 	public PixelPerfectAiming PixelPerfectAiming => _pixelPerfectAiming;
 	/// <summary>
 	/// The active display mode (VR or flatscreen).

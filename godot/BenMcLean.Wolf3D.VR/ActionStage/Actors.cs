@@ -26,7 +26,7 @@ public partial class Actors : Node3D
 	// Maps ActorIndex -> actor rendering state
 	private readonly Dictionary<int, ActorRenderData> _actorData = [];
 	// Sprite materials from VRAssetManager
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> _spriteMaterials;
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> _spriteMaterials;
 	// Digi sound library from SharedAssetManager
 	private readonly IReadOnlyDictionary<string, AudioStreamWav> _digiSounds;
 	// Viewer position for directional sprite calculation (normally player, could be MR camera)
@@ -59,7 +59,7 @@ public partial class Actors : Node3D
 	/// <param name="getViewerPosition">Delegate that returns viewer position for directional sprites</param>
 	/// <param name="getCameraYRotation">Delegate that returns camera's Y rotation in radians</param>
 	public Actors(
-		IReadOnlyDictionary<ushort, StandardMaterial3D> spriteMaterials,
+		IReadOnlyDictionary<ushort, ShaderMaterial> spriteMaterials,
 		IReadOnlyDictionary<string, AudioStreamWav> digiSounds,
 		Func<Vector3> getViewerPosition,
 		Func<float> getCameraYRotation,
@@ -115,7 +115,7 @@ public partial class Actors : Node3D
 		{
 			// Calculate initial directional sprite
 			ushort directionalSprite = CalculateDirectionalSprite(position, shape, _getViewerPosition(), facing);
-			if (!_spriteMaterials.TryGetValue(directionalSprite, out StandardMaterial3D material))
+			if (!_spriteMaterials.TryGetValue(directionalSprite, out ShaderMaterial material))
 			{
 				GD.PrintErr($"ERROR: Sprite material {directionalSprite} not found!");
 				return;
@@ -125,7 +125,7 @@ public partial class Actors : Node3D
 		else
 		{
 			// Single sprite for all viewing angles
-			if (!_spriteMaterials.TryGetValue(shape, out StandardMaterial3D material))
+			if (!_spriteMaterials.TryGetValue(shape, out ShaderMaterial material))
 			{
 				GD.PrintErr($"ERROR: Sprite material {shape} not found!");
 				return;
@@ -212,7 +212,7 @@ public partial class Actors : Node3D
 		if (!isRotated)
 		{
 			// Non-rotated: just set the material directly
-			if (_spriteMaterials.TryGetValue(newShape, out StandardMaterial3D material))
+			if (_spriteMaterials.TryGetValue(newShape, out ShaderMaterial material))
 				node.MaterialOverride = material;
 		}
 		else
@@ -220,7 +220,7 @@ public partial class Actors : Node3D
 			// Rotated: calculate directional sprite (will be updated in _Process too)
 			ushort directionalSprite = CalculateDirectionalSprite(
 				data.Position, newShape, _getViewerPosition(), data.Facing);
-			if (_spriteMaterials.TryGetValue(directionalSprite, out StandardMaterial3D material))
+			if (_spriteMaterials.TryGetValue(directionalSprite, out ShaderMaterial material))
 				node.MaterialOverride = material;
 		}
 		UpdateSnoozeNode(actorIndex, data, _getViewerPosition());
@@ -260,7 +260,7 @@ public partial class Actors : Node3D
 			return;
 		}
 		ushort page = _snoozePages[snoozeFrame - 1];
-		if (!_spriteMaterials.TryGetValue(page, out StandardMaterial3D material))
+		if (!_spriteMaterials.TryGetValue(page, out ShaderMaterial material))
 		{
 			snoozeNode.Visible = false;
 			return;

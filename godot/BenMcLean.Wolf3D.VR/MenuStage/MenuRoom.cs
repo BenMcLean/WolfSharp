@@ -705,7 +705,7 @@ end
 		VRElevatorEnvironmentDefinition envDef,
 		ActionRoom.LevelTransitionRequest levelTransition)
 	{
-		IReadOnlyDictionary<ushort, StandardMaterial3D> materials = VRAssetManager.OpaqueMaterials;
+		IReadOnlyDictionary<ushort, ShaderMaterial> materials = VRAssetManager.OpaqueMaterials;
 		if (materials is null)
 			return;
 		_elevatorEnvironmentNode = new Node3D { Name = "ElevatorEnvironment" };
@@ -714,7 +714,7 @@ end
 		// Front wall (switch) — parented to the panel so it billboard-rotates with it.
 		// Local Z = -0.005 keeps it exactly 5 mm behind the panel face in the panel's own
 		// frame, so depth testing always wins at every rotation angle without moving the wall.
-		if (materials.TryGetValue(envDef.SwitchPage, out StandardMaterial3D switchMat))
+		if (materials.TryGetValue(envDef.SwitchPage, out ShaderMaterial switchMat))
 		{
 			_elevatorSwitchWall = new MeshInstance3D
 			{
@@ -815,12 +815,12 @@ void sky() {
 	}
 	private static void SpawnElevatorWall(
 		Node3D parent,
-		IReadOnlyDictionary<ushort, StandardMaterial3D> materials,
+		IReadOnlyDictionary<ushort, ShaderMaterial> materials,
 		ushort page,
 		Vector3 position,
 		Vector3 rotation)
 	{
-		if (!materials.TryGetValue(page, out StandardMaterial3D mat))
+		if (!materials.TryGetValue(page, out ShaderMaterial mat))
 			return;
 		MeshInstance3D wall = new()
 		{
@@ -834,7 +834,7 @@ void sky() {
 	private static Material CreateElevatorFloorCeilingMaterial(ushort? tilePage, byte? paletteColor)
 	{
 		if (tilePage.HasValue
-			&& (VRAssetManager.OpaqueMaterials?.TryGetValue(tilePage.Value, out StandardMaterial3D tileMat) ?? false))
+			&& (VRAssetManager.OpaqueMaterials?.TryGetValue(tilePage.Value, out ShaderMaterial tileMat) ?? false))
 			return tileMat;
 		if (paletteColor.HasValue)
 			return new StandardMaterial3D

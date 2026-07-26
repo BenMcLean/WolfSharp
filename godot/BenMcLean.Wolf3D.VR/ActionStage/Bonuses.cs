@@ -28,7 +28,7 @@ namespace BenMcLean.Wolf3D.VR.ActionStage;
 /// <param name="spriteMaterials">Dictionary of sprite materials from GodotResources.SpriteMaterials</param>
 /// <param name="getCameraYRotation">Delegate that returns camera's Y rotation in radians</param>
 public partial class Bonuses(
-	IReadOnlyDictionary<ushort, StandardMaterial3D> spriteMaterials,
+	IReadOnlyDictionary<ushort, ShaderMaterial> spriteMaterials,
 	Func<float> getCameraYRotation) : Node3D
 {
 	/// <summary>
@@ -40,7 +40,7 @@ public partial class Bonuses(
 	/// Delegate that returns the camera's Y-axis rotation angle for billboard effect.
 	/// </summary>
 	private Func<float> _getCameraYRotation = getCameraYRotation ?? throw new ArgumentNullException(nameof(getCameraYRotation));
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> _spriteMaterials = spriteMaterials ?? throw new ArgumentNullException(nameof(spriteMaterials));
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> _spriteMaterials = spriteMaterials ?? throw new ArgumentNullException(nameof(spriteMaterials));
 	// Simulator reference for event subscription
 	private Simulator.Simulator _simulator;
 	/// <summary>
@@ -208,7 +208,7 @@ public partial class Bonuses(
 	private MultiMeshInstance3D CreateMultiMeshForPage(ushort page)
 	{
 		// Get material directly by page number (will throw KeyNotFoundException if missing)
-		StandardMaterial3D material = _spriteMaterials[page];
+		ShaderMaterial material = _spriteMaterials[page];
 		// Create MultiMesh with fixed capacity
 		MultiMesh multiMesh = new()
 		{

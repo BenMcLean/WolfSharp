@@ -17,19 +17,21 @@ namespace BenMcLean.Wolf3D.VR.ActionStage;
 public partial class Walls : Node3D
 {
 	/// <summary>
-	/// Shader for tiling floor/ceiling textures.
+	/// Shader for tiling floor/ceiling textures (e.g. Super 3D Noah's Ark's textured floors/ceilings).
 	/// UV coordinates are scaled by tile_repeat uniform to tile the texture across the map.
+	/// Uses the same RGSS supersampling as VRAssetManager's wall/sprite shaders - floors/ceilings
+	/// receded into the distance more than any other surface, so this is where mip shimmer was worst.
 	/// </summary>
-	private const string TilingShaderCode = @"
+	private static readonly string TilingShaderCode = @"
 shader_type spatial;
 render_mode unshaded, cull_back;
 
-uniform sampler2D albedo_texture : source_color, filter_nearest, repeat_enable;
+uniform sampler2D albedo_texture : source_color, filter_nearest_mipmap, repeat_enable;
 uniform vec2 tile_repeat = vec2(1.0, 1.0);
-
+" + VRAssetManager.RgssSampleFunction + @"
 void fragment() {
 	vec2 uv = UV * tile_repeat;
-	ALBEDO = texture(albedo_texture, uv).rgb;
+	ALBEDO = rgss_sample(albedo_texture, uv).rgb;
 }
 ";
 	private static Shader _tilingShader;
@@ -47,7 +49,7 @@ void fragment() {
 	public MeshInstance3D Ceiling { get; private init; }
 	// Pushwall tracking
 	private readonly List<PushWallData> pushWalls = [];
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> wallMaterials;
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> wallMaterials;
 	private readonly Dictionary<ushort, int> nextInstanceIndex = []; // Tracks next available instance per texture
 	private readonly IReadOnlyDictionary<string, AudioStreamWav> digiSounds; // Sound library
 	private Simulator.Simulator simulator;
@@ -68,7 +70,7 @@ void fragment() {
 	/// <param name="mapAnalysis">Map analysis containing wall and pushwall spawn data</param>
 	/// <param name="digiSounds">Dictionary of digi sounds from SharedAssetManager</param>
 	public Walls(
-		IReadOnlyDictionary<ushort, StandardMaterial3D> wallMaterials,
+		IReadOnlyDictionary<ushort, ShaderMaterial> wallMaterials,
 		MapAnalysis mapAnalysis,
 		IReadOnlyDictionary<string, AudioStreamWav> digiSounds)
 	{
@@ -327,11 +329,11 @@ void fragment() {
 	/// <param name="sourceMaterial">Source material containing the texture to tile</param>
 	/// <param name="tilesX">Number of tiles in X direction (map width)</param>
 	/// <param name="tilesZ">Number of tiles in Z direction (map depth)</param>
-	private static ShaderMaterial CreateTilingMaterial(StandardMaterial3D sourceMaterial, ushort tilesX, ushort tilesZ)
+	private static ShaderMaterial CreateTilingMaterial(ShaderMaterial sourceMaterial, ushort tilesX, ushort tilesZ)
 	{
 		_tilingShader ??= new Shader { Code = TilingShaderCode };
 		ShaderMaterial material = new() { Shader = _tilingShader };
-		material.SetShaderParameter("albedo_texture", sourceMaterial.AlbedoTexture);
+		material.SetShaderParameter("albedo_texture", sourceMaterial.GetShaderParameter("albedo_texture"));
 		material.SetShaderParameter("tile_repeat", new Vector2(tilesX, tilesZ));
 		return material;
 	}
@@ -340,14 +342,14 @@ void fragment() {
 	/// </summary>
 	private static MultiMeshInstance3D CreateMultiMeshForTexture(
 		ushort shape,
-		StandardMaterial3D material,
+		ShaderMaterial material,
 		List<MapAnalysis.WallSpawn> walls,
 		int totalInstanceCount)
 	{
 		// Debug: Check material validity
 		if (material is null)
 			GD.PrintErr($"ERROR: Material is null for shape {shape}");
-		else if (material.AlbedoTexture is null)
+		else if (material.GetShaderParameter("albedo_texture").As<Texture2D>() is null)
 			GD.PrintErr($"WARNING: Material for shape {shape} has null AlbedoTexture");
 		// Create MultiMesh with exact size (walls + reserved pushwall faces)
 		MultiMesh multiMesh = new()

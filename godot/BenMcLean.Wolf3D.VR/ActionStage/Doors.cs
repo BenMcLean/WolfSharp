@@ -26,7 +26,7 @@ public partial class Doors : Node3D
 	public Dictionary<ushort, MultiMeshInstance3D> FlippedMeshes { get; private init; }
 	// Door tracking
 	private readonly List<DoorData> doors = [];
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> opaqueMaterials;
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> opaqueMaterials;
 	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> flippedMaterials;
 	private readonly Dictionary<ushort, int> nextInstanceIndex = []; // Tracks next available instance per texture
 	private readonly IReadOnlyDictionary<string, AudioStreamWav> digiSounds; // Sound library
@@ -57,7 +57,7 @@ public partial class Doors : Node3D
 	/// <param name="doorSpawns">Collection of door spawn data from map analysis</param>
 	/// <param name="digiSounds">Dictionary of digi sounds from SharedAssetManager</param>
 	public Doors(
-		IReadOnlyDictionary<ushort, StandardMaterial3D> opaqueMaterials,
+		IReadOnlyDictionary<ushort, ShaderMaterial> opaqueMaterials,
 		IReadOnlyDictionary<ushort, ShaderMaterial> flippedMaterials,
 		IEnumerable<MapAnalysis.DoorSpawn> doorSpawns,
 		IReadOnlyDictionary<string, AudioStreamWav> digiSounds)

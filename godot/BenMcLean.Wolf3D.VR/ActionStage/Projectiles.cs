@@ -20,7 +20,7 @@ namespace BenMcLean.Wolf3D.VR.ActionStage;
 /// <param name="getViewerPosition">Delegate that returns viewer position for directional sprites</param>
 /// <param name="getCameraYRotation">Delegate that returns camera's Y rotation in radians</param>
 public partial class Projectiles(
-	IReadOnlyDictionary<ushort, StandardMaterial3D> spriteMaterials,
+	IReadOnlyDictionary<ushort, ShaderMaterial> spriteMaterials,
 	Func<Vector3> getViewerPosition,
 	Func<float> getCameraYRotation) : Node3D
 {
@@ -29,7 +29,7 @@ public partial class Projectiles(
 	// Maps ProjectileId -> projectile rendering state
 	private readonly Dictionary<long, ProjectileRenderData> _projectileData = [];
 	// Sprite materials from VRAssetManager
-	private readonly IReadOnlyDictionary<ushort, StandardMaterial3D> _spriteMaterials = spriteMaterials ?? throw new ArgumentNullException(nameof(spriteMaterials));
+	private readonly IReadOnlyDictionary<ushort, ShaderMaterial> _spriteMaterials = spriteMaterials ?? throw new ArgumentNullException(nameof(spriteMaterials));
 	// Viewer position for directional sprite calculation (normally player, could be MR camera)
 	private readonly Func<Vector3> _getViewerPosition = getViewerPosition ?? throw new ArgumentNullException(nameof(getViewerPosition));
 	// Camera Y rotation delegate for billboard effect
@@ -80,7 +80,7 @@ public partial class Projectiles(
 		{
 			// 8-directional sprite: pick frame based on viewer angle relative to travel direction
 			ushort directionalSprite = CalculateDirectionalSprite(position, shape, _getViewerPosition(), angle);
-			if (!_spriteMaterials.TryGetValue(directionalSprite, out StandardMaterial3D material))
+			if (!_spriteMaterials.TryGetValue(directionalSprite, out ShaderMaterial material))
 			{
 				GD.PrintErr($"ERROR: Sprite material {directionalSprite} not found!");
 				return;
@@ -90,7 +90,7 @@ public partial class Projectiles(
 		else
 		{
 			// Single sprite for all viewing angles
-			if (!_spriteMaterials.TryGetValue(shape, out StandardMaterial3D material))
+			if (!_spriteMaterials.TryGetValue(shape, out ShaderMaterial material))
 			{
 				GD.PrintErr($"ERROR: Sprite material {shape} not found!");
 				return;
@@ -150,7 +150,7 @@ public partial class Projectiles(
 		if (!isRotated)
 		{
 			// Non-rotated: set the material directly (explosion frames, single-sprite projectiles)
-			if (_spriteMaterials.TryGetValue(newShape, out StandardMaterial3D material))
+			if (_spriteMaterials.TryGetValue(newShape, out ShaderMaterial material))
 				node.MaterialOverride = material;
 		}
 		else
@@ -158,7 +158,7 @@ public partial class Projectiles(
 			// Rotated: calculate directional sprite (will also be updated in _Process)
 			ushort directionalSprite = CalculateDirectionalSprite(
 				data.Position, newShape, _getViewerPosition(), data.Angle);
-			if (_spriteMaterials.TryGetValue(directionalSprite, out StandardMaterial3D material))
+			if (_spriteMaterials.TryGetValue(directionalSprite, out ShaderMaterial material))
 				node.MaterialOverride = material;
 		}
 	}

@@ -68,7 +68,14 @@ public static class Constants
 		/// <summary>
 		/// This value is used to determine how big the player's head is for collision detection
 		/// </summary>
-		HeadXZ = PixelWidth * 3f;
+		HeadXZ = PixelWidth * 3f,
+		/// <summary>
+		/// Mip LOD bias for RGSS shader-based supersampling on wall/door/sprite materials (see
+		/// bgolus "Sharper Mipmapping using Shader-Based Supersampling"). More negative = sharper
+		/// but more prone to aliasing/shimmer; less negative = smoother but blurrier. Tune by eye
+		/// on-device.
+		/// </summary>
+		MipBias = -1.0f;
 	public static readonly float HeadDiagonal = Mathf.Sqrt(Mathf.Pow(HeadXZ, 2f) * 2f), // Pythagorean theorem
 		ShotRange = Mathf.Sqrt(Mathf.Pow(64f * TileWidth, 2f) * 2f + Mathf.Pow(TileHeight, 2f));
 	public static readonly QuadMesh WallMesh = new()

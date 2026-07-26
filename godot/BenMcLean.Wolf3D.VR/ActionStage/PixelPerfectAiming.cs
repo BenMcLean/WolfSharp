@@ -16,7 +16,7 @@ public class PixelPerfectAiming
 {
 	public const float MaxRayDistance = 64f * Constants.TileWidth; // Maximum ray distance (64 tiles)
 	private readonly ActionRoom _actionStage;
-	private readonly Dictionary<StandardMaterial3D, ushort> _materialToPage;
+	private readonly Dictionary<ShaderMaterial, ushort> _materialToPage;
 	/// <summary>
 	/// Result of a raycast operation.
 	/// </summary>
@@ -71,7 +71,7 @@ public class PixelPerfectAiming
 		_actionStage = actionStage ?? throw new ArgumentNullException(nameof(actionStage));
 		// Create reverse lookup from material to page number for pixel transparency checks
 		_materialToPage = [];
-		foreach (KeyValuePair<ushort, StandardMaterial3D> kvp in ActionRoom.SpriteMaterials)
+		foreach (KeyValuePair<ushort, ShaderMaterial> kvp in ActionRoom.SpriteMaterials)
 			_materialToPage[kvp.Value] = kvp.Key;
 	}
 	/// <summary>
@@ -413,7 +413,7 @@ public class PixelPerfectAiming
 	/// <param name="faceZ">Z coordinate of face center</param>
 	/// <param name="isVerticalInX">True if face is perpendicular to X axis, false if perpendicular to Z</param>
 	/// <param name="height">Height of the face</param>
-	private RayHit RaycastPushWallFace(
+	private static RayHit RaycastPushWallFace(
 		Vector3 rayOrigin,
 		Vector3 rayDirection,
 		float faceX,
@@ -533,7 +533,7 @@ public class PixelPerfectAiming
 					Transform3D instanceTransform = multiMesh.Multimesh.GetInstanceTransform(i);
 					Vector3 billboardPosition = instanceTransform.Origin;
 					// Get material for this multimesh to extract sprite page
-					if (multiMesh.MaterialOverride is not StandardMaterial3D material)
+					if (multiMesh.MaterialOverride is not ShaderMaterial material)
 						continue;
 					RayHit hit = CheckBillboardAtPosition(
 						billboardPosition: billboardPosition,
@@ -555,7 +555,7 @@ public class PixelPerfectAiming
 	/// Checks a single billboard (MeshInstance3D) for ray intersection with pixel-perfect detection.
 	/// </summary>
 	private RayHit CheckBillboard(MeshInstance3D billboard, Vector3 rayOrigin, Vector3 rayDirection, Vector3 billboardNormal, float maxDistance, HitType hitType, int actorIndex) =>
-		billboard.MaterialOverride is StandardMaterial3D material
+		billboard.MaterialOverride is ShaderMaterial material
 			? CheckBillboardAtPosition(
 				billboardPosition: billboard.GlobalPosition,
 				material: material,
@@ -571,7 +571,7 @@ public class PixelPerfectAiming
 	/// </summary>
 	private RayHit CheckBillboardAtPosition(
 		Vector3 billboardPosition,
-		StandardMaterial3D material,
+		ShaderMaterial material,
 		Vector3 rayOrigin,
 		Vector3 rayDirection,
 		Vector3 billboardNormal,
