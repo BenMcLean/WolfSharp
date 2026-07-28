@@ -259,6 +259,15 @@ jobs:
           unzip -q "$HOME/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable.mono/android_source.zip" -d android/build
           echo "${{ env.GODOT_VERSION }}.stable.mono" > android/.build_version
 
+      - name: Set Android version
+        # version/code becomes android:versionCode, which Android requires to be a
+        # monotonically increasing integer - github.run_number fits since it only ever
+        # goes up, unlike the human-readable version string (which isn't a plain integer).
+        working-directory: godot/BenMcLean.Wolf3D.VR
+        run: |
+          sed -i "s|^version/code=.*|version/code=${{ github.run_number }}|" export_presets.cfg
+          sed -i "s|^version/name=.*|version/name=\"${{ needs.determine-version.outputs.version }}\"|" export_presets.cfg
+
       - name: Write keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$GITHUB_WORKSPACE/release.keystore"
 
@@ -294,14 +303,16 @@ jobs:
 
       - name: Export Android
         working-directory: godot/BenMcLean.Wolf3D.VR
+        env:
+          APK_NAME: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}.apk
         run: |
           mkdir -p "$GITHUB_WORKSPACE/build/android"
-          godot --headless --export-release "Android" "$GITHUB_WORKSPACE/build/android/BenMcLean.Wolf3D.VR.apk"
+          godot --headless --export-release "Android" "$GITHUB_WORKSPACE/build/android/$APK_NAME"
 
       - uses: actions/upload-artifact@v4
         with:
           name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}
-          path: build/android/BenMcLean.Wolf3D.VR.apk
+          path: build/android/BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}.apk
 
   release:
     name: Create Release
@@ -359,4 +370,4 @@ jobs:
 
       - name: Push Android build
         run: |
-          ./butler/butler push "artifacts/BenMcLean.Wolf3D.VR_android-meta-quest_v${VERSION}/BenMcLean.Wolf3D.VR.apk" "$ITCH_TARGET:android-meta-quest" --userversion "$VERSION"
+          ./butler/butler push "artifacts/BenMcLean.Wolf3D.VR_android-meta-quest_v${VERSION}/BenMcLean.Wolf3D.VR_android-meta-quest_v${VERSION}.apk" "$ITCH_TARGET:android-meta-quest" --userversion "$VERSION"
