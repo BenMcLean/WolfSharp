@@ -1,4 +1,5 @@
 using System;
+using BenMcLean.Wolf3D.Assets;
 using BenMcLean.Wolf3D.Assets.Gameplay;
 using BenMcLean.Wolf3D.Simulator.Entities;
 using Microsoft.Extensions.Logging;

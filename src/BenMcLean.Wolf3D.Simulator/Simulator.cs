@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using BenMcLean.Wolf3D.Assets;
 using BenMcLean.Wolf3D.Assets.Gameplay;
 using BenMcLean.Wolf3D.Assets.Sound;
 using BenMcLean.Wolf3D.Simulator.Entities;

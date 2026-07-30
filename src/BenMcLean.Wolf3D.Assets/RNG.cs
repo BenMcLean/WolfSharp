@@ -27,7 +27,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BenMcLean.Wolf3D.Simulator;
+namespace BenMcLean.Wolf3D.Assets;
 
 /// <summary>
 /// Based on TangleRNG's algrithm, which is extremely fast, has a more-than-good-enough period of 2 to the 64,

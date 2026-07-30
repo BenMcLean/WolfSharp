@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
+using BenMcLean.Wolf3D.Assets;
 
 namespace BenMcLean.Wolf3D.Simulator.Lua;
 
