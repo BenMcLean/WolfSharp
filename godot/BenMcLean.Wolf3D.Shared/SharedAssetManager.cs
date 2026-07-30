@@ -8,9 +8,11 @@ using Godot;
 using RectpackSharp;
 using Microsoft.Extensions.Logging;
 using static BenMcLean.Wolf3D.Shared.GodotLogger;
+using BenMcLean.Wolf3D.Assets;
 using BenMcLean.Wolf3D.Assets.Gameplay;
 using BenMcLean.Wolf3D.Assets.Graphics;
 using BenMcLean.Wolf3D.Assets.Menu;
+using BenMcLean.Wolf3D.MapGenerator;
 using BenMcLean.Wolf3D.Shared.Menu;
 using BenMcLean.Wolf3D.Simulator.Lua;
 using BenMcLean.Wolf3D.Simulator.Lua.DefaultScripts;
@@ -696,6 +698,19 @@ public static class SharedAssetManager
 		}
 		return files;
 	}
+	/// <summary>
+	/// Loads Maps/MapAnalyses for the current game from its GAMEMAPS/MAPHEAD files (the entire
+	/// game, all episodes), if not already loaded. Call before starting or resuming an
+	/// original-campaign session. Idempotent — see AssetManager.LoadOriginalMaps().
+	/// </summary>
+	public static void EnsureOriginalMapsLoaded() => CurrentGame?.LoadOriginalMaps();
+	/// <summary>
+	/// Generates a fresh episode (BenMcLean.Wolf3D.MapGenerator.LevelGenerator.GenerateEpisode) and
+	/// substitutes it for Maps/MapAnalyses, never touching GAMEMAPS/MAPHEAD. Always regenerates —
+	/// call this once per "start a new generated game" decision, not on every resume.
+	/// </summary>
+	public static void LoadGeneratedEpisode(GenerationParameters parameters) =>
+		CurrentGame?.LoadGeneratedMaps(LevelGenerator.GenerateEpisode(parameters), parameters);
 	/// <summary>
 	/// Loads a game from the user's games folder.
 	/// </summary>

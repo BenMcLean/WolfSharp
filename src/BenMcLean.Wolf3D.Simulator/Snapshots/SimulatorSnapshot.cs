@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BenMcLean.Wolf3D.Assets;
 using BenMcLean.Wolf3D.Simulator.Entities;
 
 namespace BenMcLean.Wolf3D.Simulator.Snapshots;
@@ -176,4 +177,13 @@ public record SimulatorSnapshot
 	/// WL_MAP.C:AutoMap visibility concept — _everSeen in Simulator.
 	/// </summary>
 	public byte[] EverSeen { get; init; }
+
+	/// <summary>
+	/// Null if this save's maps came from the original game's GAMEMAPS/MAPHEAD files; non-null
+	/// names the seed/parameters BenMcLean.Wolf3D.MapGenerator.LevelGenerator.GenerateEpisode
+	/// produced them from. Lets a saved generated episode be reproduced deterministically on load
+	/// without persisting any map data itself. Type lives in BenMcLean.Wolf3D.Assets (which this
+	/// project already references) rather than MapGenerator, to avoid a circular project reference.
+	/// </summary>
+	public GenerationParameters GeneratedFrom { get; init; }
 }

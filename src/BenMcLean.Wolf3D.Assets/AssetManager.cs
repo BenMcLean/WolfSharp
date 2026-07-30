@@ -19,9 +19,23 @@ public class AssetManager
 	public readonly AudioT AudioT;
 	public readonly VgaGraph VgaGraph;
 	public readonly VSwap VSwap;
-	public readonly GameMap[] Maps;
+	/// <summary>
+	/// Null until LoadOriginalMaps() or LoadGeneratedMaps(...) is called. Deferred rather than
+	/// loaded eagerly at game-select time, since decompressing GAMEMAPS (or running the level
+	/// generator) is wasted work until the player actually chooses to start playing, and a
+	/// procedurally generated episode has no fixed file to eagerly load in the first place.
+	/// </summary>
+	public GameMap[] Maps { get; private set; }
 	public readonly MapAnalyzer MapAnalyzer;
-	public readonly MapAnalyzer.MapAnalysis[] MapAnalyses;
+	public MapAnalyzer.MapAnalysis[] MapAnalyses { get; private set; }
+	/// <summary>
+	/// Null if Maps came from LoadOriginalMaps() (GAMEMAPS/MAPHEAD); non-null if Maps came from
+	/// LoadGeneratedMaps(...), naming the seed/parameters that produced them. A generated episode
+	/// is always treated as "episode 1" locally — BenMcLean.Wolf3D.MapGenerator never generates
+	/// more than one episode per call, so no other episode number would mean anything, and
+	/// MapAnalyzer.MapNumber(episode, level)'s XML <Map> lookup is never used on this path.
+	/// </summary>
+	public GenerationParameters GeneratedFrom { get; private set; }
 	public readonly StateCollection StateCollection;
 	public readonly WeaponCollection WeaponCollection;
 	public readonly MenuCollection MenuCollection;
@@ -31,6 +45,12 @@ public class AssetManager
 	/// WL_TEXT.C: CA_LoadFile(helpfilename) / CA_CacheGrChunk(T_HELPART)
 	/// </summary>
 	public readonly Dictionary<string, string> TextChunks;
+	// Captured (post case-insensitive/extension-fallback wrapping) so LoadOriginalMaps() can defer
+	// reading GAMEMAPS/MAPHEAD until it's actually called, using the exact same file resolution
+	// the rest of the constructor already set up.
+	private readonly string _folder;
+	private readonly Func<string, Stream> _openRead;
+	private readonly Func<string, bool> _fileExists;
 	public static AssetManager Load(string xmlPath, ILoggerFactory loggerFactory = null)
 	{
 		XElement xml = GameXmlResolver.Load(xmlPath);
@@ -73,43 +93,25 @@ public class AssetManager
 			openRead = path => OpenReadWithExtensionFallback(path, extensions, ciFileExists, ciOpenRead);
 		}
 		XML = xml ?? throw new ArgumentNullException(nameof(xml));
+		_folder = folder;
+		_openRead = openRead;
+		_fileExists = fileExists;
 		AudioT audioT = null;
 		VgaGraph vgaGraph = null;
 		VSwap vSwap = null;
-		GameMap[] maps = null;
 		Parallel.ForEach(
 			source: new Action[] {
 					() => audioT = LoadAudioT(xml, folder, openRead),
 					() => vgaGraph = LoadVgaGraph(xml, folder, openRead),
 					() => vSwap = LoadVSwap(xml, folder, openRead),
-					() => maps = LoadMaps(xml, folder, openRead),
 				},
 			body: action => action());
 		AudioT = audioT;
 		VgaGraph = vgaGraph;
 		VSwap = vSwap;
-		Maps = maps;
 		ILogger<MapAnalyzer> mapAnalyzerLogger = loggerFactory?.CreateLogger<MapAnalyzer>()
 			?? NullLogger<MapAnalyzer>.Instance;
 		MapAnalyzer = new MapAnalyzer(xml, VSwap?.SpritesByName, mapAnalyzerLogger);
-		// Load pre-baked wall spawns if this game uses a WALLSPAWNS file.
-		// Games like KOD assign different textures to each face of a block (n_wall, e_wall,
-		// s_wall, w_wall in .BLK files). The standard Wolf3D tile-to-page formula can't
-		// represent that, so those games bake wall spawns at conversion time instead.
-		MapAnalyzer.MapAnalysis.WallSpawn[][] wallSpawnsByLevel = null;
-		if (!string.IsNullOrEmpty(MapAnalyzer.WallSpawnsFile))
-		{
-			string wallSpawnsPath = Path.Combine(folder, MapAnalyzer.WallSpawnsFile);
-			if (FileExists(wallSpawnsPath, fileExists))
-				using (Stream wallSpawnsStream = OpenRead(wallSpawnsPath, openRead))
-					wallSpawnsByLevel = Gameplay.WallSpawns.LoadAll(wallSpawnsStream);
-		}
-		MapAnalyses = wallSpawnsByLevel is not null
-			? [.. maps.Select(map =>
-				map.Number < wallSpawnsByLevel.Length
-					? MapAnalyzer.Analyze(map, wallSpawnsByLevel[map.Number])
-					: MapAnalyzer.Analyze(map))]
-			: [.. MapAnalyzer.Analyze(maps)];
 		// Load StateCollection from XML
 		StateCollection = LoadStateCollection(xml);
 		// Load WeaponCollection from XML
@@ -118,6 +120,57 @@ public class AssetManager
 		MenuCollection = LoadMenuCollection(xml);
 		// Load text chunks (external files + embedded VGAGRAPH chunks)
 		TextChunks = LoadTextChunks(xml, folder, openRead, fileExists);
+	}
+	/// <summary>
+	/// Loads Maps/MapAnalyses from this game's GAMEMAPS/MAPHEAD files (the entire game, all
+	/// episodes, exactly as before this was deferred) and sets GeneratedFrom = null. Idempotent:
+	/// a no-op if Maps is already loaded, so callers can call this unconditionally whenever the
+	/// player is about to start (or return to) an original-campaign session.
+	/// </summary>
+	public void LoadOriginalMaps()
+	{
+		if (Maps is not null)
+			return;
+		GameMap[] maps = LoadMaps(XML, _folder, _openRead);
+		// Load pre-baked wall spawns if this game uses a WALLSPAWNS file.
+		// Games like KOD assign different textures to each face of a block (n_wall, e_wall,
+		// s_wall, w_wall in .BLK files). The standard Wolf3D tile-to-page formula can't
+		// represent that, so those games bake wall spawns at conversion time instead.
+		MapAnalyzer.MapAnalysis.WallSpawn[][] wallSpawnsByLevel = null;
+		if (!string.IsNullOrEmpty(MapAnalyzer.WallSpawnsFile))
+		{
+			string wallSpawnsPath = Path.Combine(_folder, MapAnalyzer.WallSpawnsFile);
+			if (FileExists(wallSpawnsPath, _fileExists))
+				using (Stream wallSpawnsStream = OpenRead(wallSpawnsPath, _openRead))
+					wallSpawnsByLevel = Gameplay.WallSpawns.LoadAll(wallSpawnsStream);
+		}
+		Maps = maps;
+		MapAnalyses = wallSpawnsByLevel is not null
+			? [.. maps.Select(map =>
+				map.Number < wallSpawnsByLevel.Length
+					? MapAnalyzer.Analyze(map, wallSpawnsByLevel[map.Number])
+					: MapAnalyzer.Analyze(map))]
+			: [.. MapAnalyzer.Analyze(maps)];
+		GeneratedFrom = null;
+	}
+	/// <summary>
+	/// Substitutes a procedurally generated episode (e.g. from
+	/// BenMcLean.Wolf3D.MapGenerator.LevelGenerator.GenerateEpisode) for Maps/MapAnalyses, never
+	/// touching GAMEMAPS/MAPHEAD. Always overwrites (no idempotency check) — a fresh "start new
+	/// game" with generation always means a fresh seed, unlike the original-campaign case.
+	/// generatedMaps is treated as the only episode there is (see GeneratedFrom's doc comment).
+	/// generated maps currently use Obsidian's own hardcoded tile/actor conventions, not
+	/// necessarily this game's — MapAnalyzer below interprets them using THIS game's conventions
+	/// regardless, so results may not be meaningful until BenMcLean.Wolf3D.MapGenerator's
+	/// IMPLEMENTATION_PLAN.md §11 (data-driven GAME.FACTORY) is done.
+	/// </summary>
+	public void LoadGeneratedMaps(GameMap[] generatedMaps, GenerationParameters parameters)
+	{
+		if (generatedMaps is null || generatedMaps.Length == 0)
+			throw new ArgumentException("generatedMaps must be non-empty.", nameof(generatedMaps));
+		Maps = generatedMaps;
+		MapAnalyses = [.. MapAnalyzer.Analyze(generatedMaps)];
+		GeneratedFrom = parameters ?? throw new ArgumentNullException(nameof(parameters));
 	}
 	private static AudioT LoadAudioT(XElement xml, string folder, Func<string, Stream> openRead)
 	{

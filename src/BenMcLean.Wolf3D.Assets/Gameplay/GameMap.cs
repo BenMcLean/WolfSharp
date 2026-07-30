@@ -64,6 +64,23 @@ public sealed class GameMap
 	public ushort GetOtherData(ushort x, ushort y) => OtherData[GetIndex(x, y)];
 	public bool IsWithinMap(int x, int y) => x >= 0 && y >= 0 && x < Width && y < Depth;
 	#endregion Data
+	#region Generation
+	/// <summary>
+	/// Constructs a GameMap from procedurally generated data (BenMcLean.Wolf3D.MapGenerator),
+	/// bypassing the binary GAMEMAPS/MAPHEAD load path entirely — there is no file to decompress.
+	/// </summary>
+	public static GameMap FromGenerated(ushort number, ushort width, ushort depth, string name, ushort[] mapData, ushort[] objectData, ushort[] otherData) =>
+		new()
+		{
+			Name = name,
+			Number = number,
+			Width = width,
+			Depth = depth,
+			MapData = mapData,
+			ObjectData = objectData,
+			OtherData = otherData,
+		};
+	#endregion Generation
 	#region Loading
 	public static GameMap[] Load(XElement xml, string folder = "")
 	{

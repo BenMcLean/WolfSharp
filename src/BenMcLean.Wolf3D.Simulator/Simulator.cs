@@ -35,6 +35,13 @@ public class Simulator : ISnapshot<SimulatorSnapshot>
 	/// Set by the caller after construction. Used to validate save game compatibility.
 	/// </summary>
 	public string GameName { get; set; }
+	/// <summary>
+	/// Null if the currently-loaded maps came from the original game's GAMEMAPS/MAPHEAD; non-null
+	/// names the seed/parameters BenMcLean.Wolf3D.MapGenerator.LevelGenerator.GenerateEpisode
+	/// produced them from. Set by the caller after construction (same pattern as GameName), from
+	/// AssetManager.GeneratedFrom. Carried into SimulatorSnapshot so a save/load round-trips it.
+	/// </summary>
+	public GenerationParameters GeneratedFrom { get; set; }
 	private readonly List<PlayerAction> pendingActions = [];
 	public IReadOnlyList<Door> Doors => doors;
 	private readonly List<Door> doors = [];
@@ -3981,6 +3988,7 @@ public class Simulator : ISnapshot<SimulatorSnapshot>
 		return new SimulatorSnapshot
 		{
 			GameName = GameName,
+			GeneratedFrom = GeneratedFrom,
 			CurrentTic = CurrentTic,
 			AccumulatedTime = accumulatedTime,
 			PlayerX = PlayerX,

@@ -201,6 +201,16 @@ public class MenuScriptContext(
 	/// </summary>
 	/// <param name="start">True to start game, false to cancel</param>
 	public void SetStartGame(bool start) => sessionState.StartGame = start;
+	/// <summary>
+	/// Get whether the game about to start should use a procedurally generated episode instead
+	/// of the original campaign.
+	/// </summary>
+	public bool GetProcGen() => sessionState.ProcGenMode;
+	/// <summary>
+	/// Set whether the game about to start should use a procedurally generated episode instead
+	/// of the original campaign. Set by the "Original Maps"/"Proc-Gen Maps" menu.
+	/// </summary>
+	public void SetProcGen(bool procGen) => sessionState.ProcGenMode = procGen;
 	#endregion Session State
 	#region Settings (Config.cs Integration)
 	// These methods read/write directly to Config.cs

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BenMcLean.Wolf3D.Assets;
 using BenMcLean.Wolf3D.Assets.Gameplay;
 using BenMcLean.Wolf3D.Assets.Menu;
 using BenMcLean.Wolf3D.Assets.Graphics;
@@ -250,11 +251,23 @@ public partial class Root : Node3D
 			{
 				// Starting a new game discards any suspended game
 				_suspendedGame = null;
-				// Get selected episode and difficulty from menu
-				int selectedEpisode = menuRoom.SelectedEpisode;
-				ushort episode = (ushort)selectedEpisode;
-				int difficulty = menuRoom.SelectedDifficulty,
+				int difficulty = menuRoom.SelectedDifficulty, levelIndex;
+				if (menuRoom.ProcGenMode)
+				{
+					// Proc-Gen Maps: skip episode select entirely, always floor 1-1 of a fresh
+					// generated episode. No UI yet for choosing a seed/other parameters — a new
+					// random seed each time, matching "start a new game" semantics.
+					RNG seedRng = new();
+					SharedAssetManager.LoadGeneratedEpisode(new GenerationParameters { SeedA = seedRng.NextULong(), SeedB = seedRng.NextULong() });
+					levelIndex = 0;
+				}
+				else
+				{
+					// Original campaign: maps are loaded on first use, not at title-select time.
+					SharedAssetManager.EnsureOriginalMapsLoaded();
+					ushort episode = (ushort)menuRoom.SelectedEpisode;
 					levelIndex = SharedAssetManager.CurrentGame.MapAnalyzer.MapNumber(episode, 1);
+				}
 				ActionRoom actionStage = new(DisplayMode, levelIndex: levelIndex, difficulty: difficulty, debugMarkersEnabled: _debugMarkersEnabled, cheatModeEnabled: _cheatModeEnabled, useVoxelWeapons: _useVoxelWeapons, statusBarController: GetOrCreateStatusBarController(), statusBarRenderer: GetOrCreateStatusBarRenderer());
 				TransitionTo(actionStage);
 			}
@@ -468,6 +481,8 @@ public partial class Root : Node3D
 			},
 			StartLevelAction = mapIndex =>
 			{
+				// Original campaign: maps are loaded on first use, not at title-select time.
+				Shared.SharedAssetManager.EnsureOriginalMapsLoaded();
 				MapAnalyzer.MapAnalysis[] analyses = Shared.SharedAssetManager.CurrentGame.MapAnalyses;
 				if (analyses is null || analyses.Length == 0)
 					throw new InvalidOperationException(
@@ -563,6 +578,13 @@ public partial class Root : Node3D
 		}
 		// Discard any suspended game
 		_suspendedGame = null;
+		// Load whichever kind of maps this save actually needs: null GeneratedFrom means the
+		// original campaign (GAMEMAPS/MAPHEAD); non-null means regenerate the exact same
+		// procedurally generated episode from its saved seed/parameters.
+		if (saveFile.Snapshot.GeneratedFrom is null)
+			SharedAssetManager.EnsureOriginalMapsLoaded();
+		else
+			SharedAssetManager.LoadGeneratedEpisode(saveFile.Snapshot.GeneratedFrom);
 		// Create new ActionStage with the saved snapshot
 		// Level index is read from the snapshot's MapOn inventory value
 		ActionRoom actionStage = new(DisplayMode, saveFile.Snapshot, debugMarkersEnabled: _debugMarkersEnabled, cheatModeEnabled: _cheatModeEnabled, useVoxelWeapons: _useVoxelWeapons, statusBarController: GetOrCreateStatusBarController(), statusBarRenderer: GetOrCreateStatusBarRenderer());

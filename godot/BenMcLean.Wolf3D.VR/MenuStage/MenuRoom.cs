@@ -72,6 +72,11 @@ public partial class MenuRoom : Node3D, IRoom
 	/// </summary>
 	public int SelectedDifficulty => _menuManager?.SessionState?.SelectedDifficulty ?? 0;
 	/// <summary>
+	/// Whether the game about to start should use a procedurally generated episode instead of
+	/// the original campaign. Set by the "Original Maps"/"Proc-Gen Maps" menu.
+	/// </summary>
+	public bool ProcGenMode => _menuManager?.SessionState?.ProcGenMode ?? false;
+	/// <summary>
 	/// Optional level transition request for intermission mode.
 	/// When set, the MenuRoom shows the "LevelComplete" menu instead of "Main".
 	/// </summary>

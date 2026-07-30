@@ -96,6 +96,7 @@ public partial class SimulatorController : Node3D
 			logger: logger,
 			audioT: SharedAssetManager.CurrentGame?.AudioT,
 			luaScriptEngine: SharedAssetManager.ActionLuaEngine);
+		simulator.GeneratedFrom = SharedAssetManager.CurrentGame?.GeneratedFrom;
 		doors = doorsNode ?? throw new ArgumentNullException(nameof(doorsNode));
 		walls = wallsNode ?? throw new ArgumentNullException(nameof(wallsNode));
 		bonuses = bonusesNode ?? throw new ArgumentNullException(nameof(bonusesNode));

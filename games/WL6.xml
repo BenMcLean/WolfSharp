@@ -274,7 +274,7 @@
 				<Picture Name="C_MOUSELBACKPIC" X="Center" Y="184" />
 				<Box X="68" Y="52" W="178" H="136" />
 				<MenuItem Text="New Game">
-					NavigateToMenu("Episodes")
+					NavigateToMenu("MapSource")
 				</MenuItem>
 				<MenuItem Text="Sound">
 					NavigateToMenu("Sound")
@@ -300,6 +300,24 @@
 				</MenuItem>
 				<OnCancel>if IsGameInProgress() then ResumeGame() else RequestQuit() end</OnCancel>
 			</Menu>
+			<!-- Map Source Menu: choose original campaign maps vs. a procedurally generated
+			episode (BenMcLean.Wolf3D.MapGenerator). Not part of the original 1992 game. -->
+			<Menu Name="MapSource" X="76" Y="55" Indent="24" Spacing="13">
+				<Box X="68" Y="52" W="178" H="136" />
+				<Picture Name="C_MOUSELBACKPIC" X="Center" Y="184">
+					NavigateToMenu("Main")
+				</Picture>
+				<Text X="Center" Y="20" Color="71">Which levels?</Text>
+				<MenuItem Text="Original Maps">
+					SetProcGen(false)
+					NavigateToMenu("Episodes")
+				</MenuItem>
+				<MenuItem Text="Proc-Gen Maps">
+					SetProcGen(true)
+					NavigateToMenu("NewGame")
+				</MenuItem>
+				<OnCancel>NavigateToMenu("Main")</OnCancel>
+			</Menu>
 			<!-- Episode Selection Menu (WL_MENU.H: NE_X=10, NE_Y=23) -->
 			<!-- WL_MENU.C:1587: DrawNewEpisode() function -->
 			<!-- WL_MENU.C:1597: DrawWindow(NE_X-4,NE_Y-4,NE_W+8,NE_H+8) = DrawWindow(6,19,308,162) -->
@@ -307,7 +325,7 @@
 			<!-- WL_MENU.C:95: NewEitems={NE_X,NE_Y,11,0,88} - X=10, Y=23, indent=88 -->
 			<Menu Name="Episodes" X="10" Y="23" Indent="88" Spacing="26">
 				<Picture Name="C_MOUSELBACKPIC" X="Center" Y="184" >
-					NavigateToMenu("Main")
+					NavigateToMenu("MapSource")
 				</Picture>
 				<!-- WL_MENU.C:1597: DrawWindow(6,19,308,162) -->
 				<Box X="6" Y="19" W="308" H="162" />
@@ -353,7 +371,7 @@
 					SetEpisode(6)
 					NavigateToMenu("NewGame")
 				</MenuItem>
-				<OnCancel>NavigateToMenu("Main")</OnCancel>
+				<OnCancel>NavigateToMenu("MapSource")</OnCancel>
 			</Menu>
 
 			<!-- New Game / Difficulty Menu (WL_MENU.H: NM_X=50, NM_Y=100) -->

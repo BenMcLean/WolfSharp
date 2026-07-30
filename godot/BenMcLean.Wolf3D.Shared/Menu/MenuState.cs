@@ -50,6 +50,13 @@ public class MenuState
 	/// </summary>
 	public bool StartGame { get; set; } = false;
 	/// <summary>
+	/// Whether the game about to start should use a procedurally generated episode
+	/// (BenMcLean.Wolf3D.MapGenerator) instead of the original campaign's GAMEMAPS/MAPHEAD.
+	/// Set by the new "Original Maps"/"Proc-Gen Maps" menu; read by Root.cs when StartGame fires.
+	/// Temporary session state, not persisted to CONFIG file.
+	/// </summary>
+	public bool ProcGenMode { get; set; } = false;
+	/// <summary>
 	/// VR mode setting - new feature not in original CONFIG format.
 	/// Stored here instead of Config.cs because it doesn't fit the original file structure.
 	/// May be persisted to a separate settings file in the future.
