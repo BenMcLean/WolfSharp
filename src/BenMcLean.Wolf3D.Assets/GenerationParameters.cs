@@ -11,8 +11,19 @@ public sealed record GenerationParameters
 {
 	public ulong SeedA { get; init; }
 	public ulong SeedB { get; init; }
-	/// <summary>Obsidian's "ob_size" (PARAM.float_size_wolf_3d): overall level size/complexity.</summary>
-	public int LevelSize { get; init; } = 36;
+	/// <summary>
+	/// Obsidian's "ob_size" (PARAM.float_size_wolf_3d): overall level size/complexity. Controls
+	/// Level.plan_size (wolf/factory.lua: ob_size&lt;=22 -> 4, &lt;=48 -> 5, &lt;=58 -> 6, else -> 7) —
+	/// how many block-cells the layout spans within the always-64x64 tile grid, NOT the grid size
+	/// itself (that's fixed). Also gates gold-key placement: WOLF.decide_quests only adds a k_gold
+	/// quest on a non-boss map when round(ob_size/25)==2, i.e. ob_size roughly 38-62 — at the
+	/// previous default of 36 every generated map got round(36/25)==1, so gold keys structurally
+	/// could never appear except via a boss kill (Q.give_key), and the sparser plan_size=5 layout
+	/// that low a value produces also left less room for the boss quest itself to get placed.
+	/// Confirmed by playtesting: 36 produced silver-only keys and a boss-less "normal elevator"
+	/// exit on the boss map (map 9). 55 satisfies both (round(55/25)==2, plan_size=6).
+	/// </summary>
+	public int LevelSize { get; init; } = 55;
 	/// <summary>PARAM.room_size_multiplier_wolf_3d: 1.0 matches Obsidian's own default cell_size of 12.</summary>
 	public double RoomSizeMultiplier { get; init; } = 1.0;
 	/// <summary>Which episode (1-based) to draw a level from.</summary>
