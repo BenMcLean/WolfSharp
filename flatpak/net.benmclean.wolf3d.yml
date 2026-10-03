@@ -1,0 +1,75 @@
+# Flatpak manifest for WolfSharp. Targets both x86_64 and aarch64 (the latter for Valve's
+# Steam Frame - see BenMcLean.Wolf3D/docs/steam-frame.md for why Flathub rather than
+# Steamworks/SteamPipe is the distribution path for a free/open-source project here).
+#
+# This does NOT build the engine from source inside the Flatpak sandbox. It bundles the
+# already-exported Godot Linux binary (same output the AppImage job in
+# .github/workflows/build.yml produces) as a prebuilt artifact, because building Godot's
+# C#/.NET export pipeline (editor + export templates + `dotnet publish`) inside
+# flatpak-builder's sandbox is a much larger, separate effort with no clear benefit here -
+# the source is already public on GitHub and the build is already fully reproducible via
+# that workflow. Flathub does accept this pattern for engines/tooling that don't fit their
+# sandboxed build model; revisit only if Flathub review specifically requires a from-source
+# build.
+#
+# Expects a directory at build-input/ (sibling to this file, gitignored, NOT checked in)
+# containing exactly one architecture's exported build: the Godot export binary
+# (BenMcLean.Wolf3D.VR.x86_64 or BenMcLean.Wolf3D.VR.arm64) plus the games/ folder and
+# README.md, i.e. the same contents as build/linux-release or build/linux-arm64-release
+# in CI. CI populates this before invoking `flatpak-builder` (see build.yml) - for a local
+# test build, copy one of those release directories to flatpak/build-input/ yourself.
+app-id: net.benmclean.wolf3d
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+command: net.benmclean.wolf3d
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  - --socket=pulseaudio
+  # Game data folder: ~/WOLF3D (same path inside and outside the sandbox, so it is easy to
+  # find in Dolphin on the Steam Frame). RuntimeOptions.cs defaults to it when it detects a
+  # Flatpak. To use another location: grant it with
+  #   flatpak override --user --filesystem=/some/path net.benmclean.wolf3d
+  # and point at it with --path or WOLF3D_GAMES_DIR (flatpak override --env=WOLF3D_GAMES_DIR=...).
+  - --filesystem=~/WOLF3D:create
+  # Lets the OpenXR loader read ~/.config/openxr/1/active_runtime.json to find the active
+  # runtime. Probably not sufficient on its own: the runtime's own files/IPC socket (SteamVR
+  # on the Steam Frame) may also need granting. Unverified on hardware - see
+  # docs/steam-frame.md.
+  - --filesystem=xdg-config/openxr:ro
+
+modules:
+  - name: wolf3d
+    buildsystem: simple
+    build-commands:
+      # Copy the whole export output as-is (binary + its matching .pck + the data_*
+      # support directory Godot's Linux export generates for GDExtension plugins like
+      # the OpenXR Vendors .so - all of it keyed off the binary's exact basename, which
+      # is why it's copied verbatim instead of renamed). Then symlink a stable
+      # `net.benmclean.wolf3d` entry point to whichever arch-suffixed binary is present -
+      # a plain rename would break Godot's pck lookup, which matches the *real* (symlink-
+      # resolved, via /proc/self/exe) executable name, not the invoked name, so the
+      # symlink target's basename must stay in sync with its .pck.
+      - mkdir -p /app/bin
+      - cp -r build-input/. /app/bin/
+      - >-
+        BIN=$(find /app/bin -maxdepth 1 -type f -name 'BenMcLean.Wolf3D.VR.*'
+        ! -name '*.pck' ! -name '*.sh') &&
+        chmod +x "$BIN" &&
+        ln -sf "$(basename "$BIN")" /app/bin/net.benmclean.wolf3d
+      - install -Dm644 net.benmclean.wolf3d.desktop /app/share/applications/net.benmclean.wolf3d.desktop
+      - install -Dm644 net.benmclean.wolf3d.metainfo.xml /app/share/metainfo/net.benmclean.wolf3d.metainfo.xml
+      - install -Dm644 icon256.png /app/share/icons/hicolor/256x256/apps/net.benmclean.wolf3d.png
+    sources:
+      - type: dir
+        path: build-input
+        dest: build-input
+      - type: file
+        path: ../packaging/linux/net.benmclean.wolf3d.desktop
+      - type: file
+        path: ../packaging/linux/net.benmclean.wolf3d.metainfo.xml
+      - type: file
+        path: ../promo/icon/icon256.png

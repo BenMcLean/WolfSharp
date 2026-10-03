@@ -4,6 +4,10 @@ On PC, a subfolder should be created for each game under a "games" folder placed
 
 On Android, the subfolders go under `/sdcard/WOLF3D`.
 
+In a Flatpak (e.g. Steam Frame), the subfolders go under `~/WOLF3D`.
+
+On any platform, the location can be overridden with `--path <path>` or the `WOLF3D_GAMES_DIR` environment variable.
+
 |Title|Subfolder|File extension|
 |---|---|---|
 |Wolfenstein 3-D Shareware|`WL1`|`*.WL1`|

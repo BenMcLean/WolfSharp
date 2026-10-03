@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Wolfenstein 3-D
+Comment=Wolfenstein 3-D engine recreation for VR (WolfSharp)
+Exec=net.benmclean.wolf3d
+Icon=net.benmclean.wolf3d
+Categories=Game;ActionGame;
+Terminal=false
