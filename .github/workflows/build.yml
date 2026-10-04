@@ -10,16 +10,17 @@
 #                    https://itch.io/user/settings/api-keys
 # If this secret is absent the itch-release job will fail; the GitHub Release is unaffected.
 # This job pushes to https://benmclean.itch.io/wolfsharp using itch.io's "butler" CLI, one
-# channel per platform (windows-x64, linux-x64, android-meta-quest). It only runs on tag pushes,
-# same as the GitHub Release job, and only after all builds succeed.
+# channel per platform (windows-x64, linux-x64, linux-arm64, android-meta-quest). It only runs
+# on tag pushes, same as the GitHub Release job, and only after all builds succeed.
 #
-# The Linux job also wraps its export into a portable .AppImage (no extra secrets needed).
-# It's built with appimagetool alone, not linuxdeploy, so it does NOT bundle system shared
-# libraries (Vulkan/Mesa/GL, libc, X11/Wayland, audio) - deliberately, since bundling GPU driver
-# libraries would break hardware acceleration on the host. This assumes those libraries are
-# present on the target system, which holds for SteamOS and any current mainstream distro, but
-# hasn't been verified on real hardware from this environment - test on an actual Steam Deck (or
-# a fresh distro VM) before relying on it.
+# Both Linux jobs (linux-x64, linux-arm64 - the latter for Steam Frame) wrap their export into a
+# portable .AppImage (no extra secrets needed). It's built with appimagetool alone, not
+# linuxdeploy, so it does NOT bundle system shared libraries (Vulkan/Mesa/GL, libc, X11/Wayland,
+# audio) - deliberately, since bundling GPU driver libraries would break hardware acceleration on
+# the host. This assumes those libraries are present on the target system, which holds for
+# SteamOS and any current mainstream distro. appimagetool always runs as the native x86_64
+# build; for linux-arm64 it is handed the aarch64 type2 runtime via --runtime-file, so no arm64
+# code needs to execute on the x86_64 GitHub-hosted runner (no QEMU).
 #
 # HOW TO CUT A RELEASE:
 #   Push (or create, in the GitHub web UI under Releases -> Tags) a tag whose name starts with a
@@ -27,20 +28,21 @@
 #   the tag "v0.1.0" produces version "0.1.0" and a release named "v0.1.0".
 #     git tag v0.1.0
 #     git push origin v0.1.0
-#   That push triggers this workflow automatically: it builds Windows, Linux, and Android, then
-#   the "release" job downloads all three build artifacts, creates a GitHub Release for that tag,
-#   and attaches the build files. Nothing further is needed - the Release goes up as soon as all
-#   three builds finish. To add hand-written release notes afterward, edit the published release
-#   in the GitHub web UI.
+#   That push triggers this workflow automatically: it builds Windows, Linux (x64 and arm64), and
+#   Android, then the "release" job downloads all build artifacts, creates a GitHub Release for
+#   that tag, and attaches the build files.
+#   Nothing further is needed - the Release goes up as soon as every build finishes. To add
+#   hand-written release notes afterward, edit the published release in the GitHub web UI.
 #
 # HOW TO GET A PREVIEW BUILD (no release, no tag):
 #   1. In the GitHub web UI, go to Actions -> "Build" (this workflow) in the left sidebar.
 #   2. Click "Run workflow" (top right of the runs list).
 #   3. Pick the branch to build from, enter a throwaway version string (e.g. "0.0.0-preview" or a
 #      date/commit stamp) in the "Version number" field, and click the green "Run workflow" button.
-#   4. Wait for both the "Export <platform>" jobs and "Export Android (Meta Quest)" to finish
-#      (green checks). Each produces one artifact: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
-#      ..._linux-x64_v<version>.tar.gz, and ..._android-meta-quest_v<version>.apk.
+#   4. Wait for the "Export <platform>" jobs and "Export Android (Meta Quest)" to finish (green
+#      checks). Each produces one artifact: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
+#      ..._linux-x64_v<version>.tar.gz, ..._linux-arm64_v<version>.tar.gz, and
+#      ..._android-meta-quest_v<version>.apk.
 #   5. Open the completed run's summary page and download each artifact under "Artifacts".
 #      GitHub Actions artifacts are zipped again on download, so unzip once to get the real file.
 #   Manually running the workflow this way never creates a GitHub Release (that only happens from
@@ -100,6 +102,14 @@ jobs:
             release_dir: build/linux-release
             output_file: BenMcLean.Wolf3D.VR.x86_64
             archive_ext: tar.gz
+            appimage_arch: x86_64
+          - preset: "Linux (arm64)"
+            name: linux-arm64
+            output_dir: build/linux-arm64
+            release_dir: build/linux-arm64-release
+            output_file: BenMcLean.Wolf3D.VR.arm64
+            archive_ext: tar.gz
+            appimage_arch: aarch64
 
     steps:
       - uses: actions/checkout@v4
@@ -147,38 +157,36 @@ jobs:
           fi
 
       - name: Assemble AppDir
-        if: matrix.name == 'linux-x64'
+        if: startsWith(matrix.name, 'linux-')
+        env:
+          OUTPUT_FILE: ${{ matrix.output_file }}
         run: |
           APPDIR="$GITHUB_WORKSPACE/build/AppDir"
           mkdir -p "$APPDIR/usr/bin"
           cp -r "$GITHUB_WORKSPACE/${{ matrix.output_dir }}/." "$APPDIR/usr/bin/"
-          cat > "$APPDIR/AppRun" <<'EOF'
+          cat > "$APPDIR/AppRun" <<EOF
           #!/bin/sh
-          HERE="$(dirname "$(readlink -f "$0")")"
-          exec "$HERE/usr/bin/BenMcLean.Wolf3D.VR.x86_64" "$@"
+          HERE="\$(dirname "\$(readlink -f "\$0")")"
+          exec "\$HERE/usr/bin/$OUTPUT_FILE" "\$@"
           EOF
           chmod +x "$APPDIR/AppRun"
           cp "$GITHUB_WORKSPACE/promo/icon/icon256.png" "$APPDIR/net.benmclean.wolf3d.png"
-          cat > "$APPDIR/net.benmclean.wolf3d.desktop" <<'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=Wolfenstein 3-D
-          Exec=AppRun
-          Icon=net.benmclean.wolf3d
-          Categories=Game;ActionGame;
-          Terminal=false
-          EOF
+          sed 's/^Exec=.*/Exec=AppRun/' "$GITHUB_WORKSPACE/packaging/linux/net.benmclean.wolf3d.desktop" > "$APPDIR/net.benmclean.wolf3d.desktop"
 
       - name: Build AppImage
-        if: matrix.name == 'linux-x64'
+        if: startsWith(matrix.name, 'linux-')
         run: |
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          wget -q "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${{ matrix.appimage_arch }}" -O runtime
           chmod +x appimagetool
           mkdir -p "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games"
           # --appimage-extract-and-run avoids needing FUSE, which isn't available on GH-hosted runners
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run \
+          # appimagetool spells aarch64 as "arm_aarch64" for its ARCH variable (plain "aarch64" is rejected)
+          TOOL_ARCH="${{ matrix.appimage_arch }}"
+          if [ "$TOOL_ARCH" = "aarch64" ]; then TOOL_ARCH=arm_aarch64; fi
+          ARCH="$TOOL_ARCH" ./appimagetool --appimage-extract-and-run --runtime-file runtime \
             "$GITHUB_WORKSPACE/build/AppDir" \
-            "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/BenMcLean.Wolf3D.VR-x86_64.AppImage"
+            "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/BenMcLean.Wolf3D.VR-${{ matrix.appimage_arch }}.AppImage"
           cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games/GAMES.md"
           if [ -f "$GITHUB_WORKSPACE/README.md" ]; then
             cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/README.md"
@@ -367,6 +375,12 @@ jobs:
           mkdir -p push/linux-x64
           tar -xzf "artifacts/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}.tar.gz" -C push/linux-x64
           ./butler/butler push push/linux-x64 "$ITCH_TARGET:linux-x64" --userversion "$VERSION"
+
+      - name: Push Linux arm64 build (Steam Frame)
+        run: |
+          mkdir -p push/linux-arm64
+          tar -xzf "artifacts/BenMcLean.Wolf3D.VR_linux-arm64_v${VERSION}/BenMcLean.Wolf3D.VR_linux-arm64_v${VERSION}.tar.gz" -C push/linux-arm64
+          ./butler/butler push push/linux-arm64 "$ITCH_TARGET:linux-arm64" --userversion "$VERSION"
 
       - name: Push Android build
         run: |

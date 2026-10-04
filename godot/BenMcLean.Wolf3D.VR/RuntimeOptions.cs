@@ -38,7 +38,8 @@ public static class RuntimeOptions
 	/// <summary>
 	/// Returns the directory containing game XML definition files and game data subdirectories.
 	/// Override with --path &lt;path&gt; or just a bare positional argument (absolute or relative
-	/// to the executable directory). --path takes priority over a bare argument.
+	/// to the executable directory). --path takes priority over a bare argument, which takes
+	/// priority over the WOLF3D_GAMES_DIR environment variable.
 	/// Defaults:
 	///   Android (Quest): /sdcard/WOLF3D
 	///   Editor: ../../games relative to CWD (resolves to repo games/ folder)
@@ -61,7 +62,10 @@ public static class RuntimeOptions
 			// would otherwise be misread as a games-directory override.
 			string positional = OS.GetCmdlineUserArgs()
 				.FirstOrDefault(arg => !string.IsNullOrWhiteSpace(arg) && !arg.StartsWith("--") && !arg.StartsWith("uid:"));
-			return positional != null ? ResolveGamesPath(positional) : DefaultGamesDir();
+			if (positional != null)
+				return ResolveGamesPath(positional);
+			string fromEnvironment = System.Environment.GetEnvironmentVariable("WOLF3D_GAMES_DIR");
+			return !string.IsNullOrWhiteSpace(fromEnvironment) ? ResolveGamesPath(fromEnvironment) : DefaultGamesDir();
 		}
 	}
 	private static string ResolveGamesPath(string path) =>
