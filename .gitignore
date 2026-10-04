@@ -874,9 +874,4 @@ godot/BenMcLean.Wolf3D.VR/android/.build_version
 # Music stems
 promo/remix/*.stems/
 
-# Flatpak build scratch (populated locally/CI from a Linux export output, not checked in)
-flatpak/build-input/
-.flatpak-builder/
-flatpak/repo/
-flatpak/build/
 /[Bb]uild/

@@ -13,31 +13,14 @@
 # channel per platform (windows-x64, linux-x64, linux-arm64, android-meta-quest). It only runs
 # on tag pushes, same as the GitHub Release job, and only after all builds succeed.
 #
-# Both Linux jobs (linux-x64, linux-arm64 - the latter for Steam Frame, see
-# BenMcLean.Wolf3D/docs/steam-frame.md) wrap their export into a portable .AppImage (no extra
-# secrets needed). It's built with appimagetool alone, not linuxdeploy, so it does NOT bundle
-# system shared libraries (Vulkan/Mesa/GL, libc, X11/Wayland, audio) - deliberately, since
-# bundling GPU driver libraries would break hardware acceleration on the host. This assumes
-# those libraries are present on the target system, which holds for SteamOS and any current
-# mainstream distro, but hasn't been verified on real hardware from this environment - test on
-# an actual Steam Deck/Frame (or a fresh distro VM) before relying on it. The linux-arm64 job's
-# AppImage step needs QEMU user-mode emulation registered (see the "Set up QEMU" step) because
-# appimagetool-aarch64 is itself an aarch64 binary and this job otherwise runs on an x86_64
-# GitHub-hosted runner - only that one tool runs emulated, not the Godot editor or .NET build.
-#
-# The "flatpak" job (see flatpak/net.benmclean.wolf3d.yml) builds a .flatpak bundle for each
-# Linux arch (x86_64, aarch64) in addition to the AppImage, specifically to reach Steam Frame's
-# Discover/Dolphin Software Center - see docs/steam-frame.md for why Flathub instead of
-# Steamworks. It bundles the same prebuilt export output rather than building from source inside
-# the Flatpak sandbox (see the job's own comments for why). This job produces a downloadable
-# bundle only - it does NOT submit anything to Flathub; that remains a separate, manual,
-# unauthorized-until-asked-for step (a PR against flathub/flathub). The manifest itself was
-# built and verified end-to-end offline (real flatpak-builder run, real .flatpak bundle,
-# inspected with `ostree refs`) by running the exact ghcr.io/flathub-infra/flatpak-github-actions
-# container locally via plain `docker run` - see docs/steam-frame.md "Current implementation
-# state" for the full account, including a real bug that testing caught and fixed. This exact
-# job config using the official flatpak-builder action has NOT been exercised by an actual
-# GitHub Actions run yet, though - watch its first real run.
+# Both Linux jobs (linux-x64, linux-arm64 - the latter for Steam Frame) wrap their export into a
+# portable .AppImage (no extra secrets needed). It's built with appimagetool alone, not
+# linuxdeploy, so it does NOT bundle system shared libraries (Vulkan/Mesa/GL, libc, X11/Wayland,
+# audio) - deliberately, since bundling GPU driver libraries would break hardware acceleration on
+# the host. This assumes those libraries are present on the target system, which holds for
+# SteamOS and any current mainstream distro. appimagetool always runs as the native x86_64
+# build; for linux-arm64 it is handed the aarch64 type2 runtime via --runtime-file, so no arm64
+# code needs to execute on the x86_64 GitHub-hosted runner (no QEMU).
 #
 # HOW TO CUT A RELEASE:
 #   Push (or create, in the GitHub web UI under Releases -> Tags) a tag whose name starts with a
@@ -45,9 +28,9 @@
 #   the tag "v0.1.0" produces version "0.1.0" and a release named "v0.1.0".
 #     git tag v0.1.0
 #     git push origin v0.1.0
-#   That push triggers this workflow automatically: it builds Windows, Linux (x64 and arm64),
-#   Android, and a .flatpak bundle for each Linux arch, then the "release" job downloads all
-#   build artifacts, creates a GitHub Release for that tag, and attaches the build files.
+#   That push triggers this workflow automatically: it builds Windows, Linux (x64 and arm64), and
+#   Android, then the "release" job downloads all build artifacts, creates a GitHub Release for
+#   that tag, and attaches the build files.
 #   Nothing further is needed - the Release goes up as soon as every build finishes. To add
 #   hand-written release notes afterward, edit the published release in the GitHub web UI.
 #
@@ -56,11 +39,10 @@
 #   2. Click "Run workflow" (top right of the runs list).
 #   3. Pick the branch to build from, enter a throwaway version string (e.g. "0.0.0-preview" or a
 #      date/commit stamp) in the "Version number" field, and click the green "Run workflow" button.
-#   4. Wait for the "Export <platform>" jobs, "Flatpak <arch>" jobs, and "Export Android
-#      (Meta Quest)" to finish (green checks). Each produces one artifact:
-#      BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip, ..._linux-x64_v<version>.tar.gz,
-#      ..._linux-arm64_v<version>.tar.gz, ..._flatpak-x86_64_v<version>.flatpak,
-#      ..._flatpak-aarch64_v<version>.flatpak, and ..._android-meta-quest_v<version>.apk.
+#   4. Wait for the "Export <platform>" jobs and "Export Android (Meta Quest)" to finish (green
+#      checks). Each produces one artifact: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
+#      ..._linux-x64_v<version>.tar.gz, ..._linux-arm64_v<version>.tar.gz, and
+#      ..._android-meta-quest_v<version>.apk.
 #   5. Open the completed run's summary page and download each artifact under "Artifacts".
 #      GitHub Actions artifacts are zipped again on download, so unzip once to get the real file.
 #   Manually running the workflow this way never creates a GitHub Release (that only happens from
@@ -191,24 +173,18 @@ jobs:
           cp "$GITHUB_WORKSPACE/promo/icon/icon256.png" "$APPDIR/net.benmclean.wolf3d.png"
           sed 's/^Exec=.*/Exec=AppRun/' "$GITHUB_WORKSPACE/packaging/linux/net.benmclean.wolf3d.desktop" > "$APPDIR/net.benmclean.wolf3d.desktop"
 
-      - name: Set up QEMU
-        # appimagetool-aarch64 is an aarch64 binary; this GH-hosted runner is x86_64, so it
-        # needs binfmt_misc emulation registered to execute it at all (native arm64 runners
-        # exist but aren't used here since only this one tool needs to run as arm64 - the
-        # Godot editor, dotnet build, and export all stay on the native x86_64 runner).
-        if: matrix.name == 'linux-arm64'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       - name: Build AppImage
         if: startsWith(matrix.name, 'linux-')
         run: |
-          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${{ matrix.appimage_arch }}.AppImage" -O appimagetool
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          wget -q "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${{ matrix.appimage_arch }}" -O runtime
           chmod +x appimagetool
           mkdir -p "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games"
           # --appimage-extract-and-run avoids needing FUSE, which isn't available on GH-hosted runners
-          ARCH=${{ matrix.appimage_arch }} ./appimagetool --appimage-extract-and-run \
+          # appimagetool spells aarch64 as "arm_aarch64" for its ARCH variable (plain "aarch64" is rejected)
+          TOOL_ARCH="${{ matrix.appimage_arch }}"
+          if [ "$TOOL_ARCH" = "aarch64" ]; then TOOL_ARCH=arm_aarch64; fi
+          ARCH="$TOOL_ARCH" ./appimagetool --appimage-extract-and-run --runtime-file runtime \
             "$GITHUB_WORKSPACE/build/AppDir" \
             "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/BenMcLean.Wolf3D.VR-${{ matrix.appimage_arch }}.AppImage"
           cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games/GAMES.md"
@@ -231,68 +207,6 @@ jobs:
         with:
           name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
           path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}.${{ matrix.archive_ext }}
-
-  # Builds a .flatpak bundle from each Linux export's output (see flatpak/net.benmclean.wolf3d.yml
-  # for why this bundles a prebuilt binary instead of building from source in-sandbox). This is
-  # CI validation + a downloadable/sideloadable bundle; it does NOT publish to Flathub - that's a
-  # separate, manual step (opening a PR against flathub/flathub) not wired into this workflow.
-  # Uses the official flatpak/flatpak-github-actions action inside the same container image
-  # Flathub's own build infrastructure is based on (ghcr.io/flathub-infra/flatpak-github-actions),
-  # rather than hand-installing flatpak-builder on the bare runner, to match Flathub's actual
-  # build environment as closely as possible. This exact container image can also be pulled and
-  # run locally with plain `docker run` for offline testing before pushing - see
-  # docs/steam-frame.md for the local verification steps this repo has actually run that way.
-  flatpak:
-    name: Flatpak ${{ matrix.arch }}
-    needs: [determine-version, export]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
-      options: --privileged
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x86_64
-            build_name: linux-x64
-          - arch: aarch64
-            build_name: linux-arm64
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        # flatpak-builder's bubblewrap sandbox runs the target arch's Sdk binaries, which are
-        # aarch64 ELF on this x86_64 GH-hosted runner without this registered.
-        if: matrix.arch == 'aarch64'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Download Linux build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: BenMcLean.Wolf3D.VR_${{ matrix.build_name }}_v${{ needs.determine-version.outputs.version }}
-          path: artifact
-
-      - name: Prepare build-input
-        env:
-          ARCHIVE_NAME: BenMcLean.Wolf3D.VR_${{ matrix.build_name }}_v${{ needs.determine-version.outputs.version }}
-        run: |
-          mkdir -p flatpak/build-input
-          tar -xzf "artifact/$ARCHIVE_NAME.tar.gz" -C flatpak/build-input
-
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          bundle: BenMcLean.Wolf3D.VR_flatpak-${{ matrix.arch }}_v${{ needs.determine-version.outputs.version }}.flatpak
-          manifest-path: flatpak/net.benmclean.wolf3d.yml
-          arch: ${{ matrix.arch }}
-          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: BenMcLean.Wolf3D.VR_flatpak-${{ matrix.arch }}_v${{ needs.determine-version.outputs.version }}
-          path: BenMcLean.Wolf3D.VR_flatpak-${{ matrix.arch }}_v${{ needs.determine-version.outputs.version }}.flatpak
 
   export-android:
     name: Export Android (Meta Quest)
@@ -410,7 +324,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [determine-version, export, export-android, flatpak]
+    needs: [determine-version, export, export-android]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
