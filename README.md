@@ -1,4 +1,4 @@
-**WolfSharp VR** is a C# re-implementation of the *Wolfenstein 3-D* engine (a.k.a. id Tech 0) in Godot 4 for virtual reality in true stereoscopic 3D. It features full support for *Wolfenstein 3-D* shareware, retail, *Spear of Destiny*, its mission packs and, for the first time ever in virtual reality, *Super 3D Noah's Ark*. It supports Android, (Meta Quest 3) Windows x64 with OpenXR and Linux x64 with OpenXR.
+**WolfSharp VR** is a C# re-implementation of the *Wolfenstein 3-D* engine (a.k.a. id Tech 0) in Godot 4 for virtual reality in true stereoscopic 3D. It features full support for *Wolfenstein 3-D* shareware, retail, *Spear of Destiny*, its mission packs and, for the first time ever in virtual reality, *Super 3D Noah's Ark*. Builds are provided for Android (Meta Quest 3), Windows x64, Linux x64 and Linux ARM64 (Steam Frame).
 
 See [GAMES.md](https://github.com/BenMcLean/WolfSharp/blob/master/games/GAMES.md) for instructions on installing your game data.
 
