@@ -6,7 +6,9 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\BenMcLean.Wolf3D.Assets\BenMcLean.Wolf3D.Assets.csproj" />
-		<ProjectReference Include="..\ThirdParty\NScumm.Audio\NScumm.Audio.csproj" />
+		<ProjectReference Include="..\..\BenMcLean.Wolf3D.Assets\BenMcLean.Wolf3D.Assets.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="wolf3d_font_to_woff2.py" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>

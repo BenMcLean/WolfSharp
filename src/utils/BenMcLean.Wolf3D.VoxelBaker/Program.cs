@@ -109,7 +109,7 @@ public static class Program
 				X: kvp.Value.GlobalSize.X,
 				Y: kvp.Value.GlobalSize.Y,
 				Z: kvp.Value.GlobalSize.Z)));
-		string outputPath = Path.Combine(folderPath, "..", "..", "godot", "BenMcLean.Wolf3D.VR", "Resources", "VOXELS.W3D");
+		string outputPath = Path.Combine(folderPath, "..", "..", "..", "godot", "BenMcLean.Wolf3D.VR", "Resources", "VOXELS.W3D");
 		using MemoryStream compressedStream = new();
 		using (DeflateStream deflateStream = new(
 			stream: compressedStream,
