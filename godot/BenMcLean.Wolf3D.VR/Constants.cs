@@ -65,6 +65,12 @@ public static class Constants
 		/// But testing showed this was too big.
 		/// </summary>
 		WeaponMetersPerVoxel = 0.008f,
+	/// <summary>
+	/// Weapon art (sprite and voxel) is authored for the right hand. The hand with this index
+	/// (0 = right, 1 = left) shows it mirrored left-right. Shared by WeaponHandMesh and VoxelWeapon.
+	/// </summary>
+	public const int MirroredHandIndex = 1;
+	public const float
 		/// <summary>
 		/// This value is used to determine how big the player's head is for collision detection
 		/// </summary>

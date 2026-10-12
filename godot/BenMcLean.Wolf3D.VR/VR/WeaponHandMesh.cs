@@ -29,11 +29,11 @@ public partial class WeaponHandMesh(IReadOnlyDictionary<ushort, Texture2D> sprit
 		}
 		_material = new ShaderMaterial { Shader = voxelShader };
 		_material.SetShaderParameter("resolution", 64);
-		// Left hand (slot 1) mirrors the sprite horizontally: negate X scale.
+		// The mirrored hand (Constants.MirroredHandIndex, the left) flips the sprite horizontally: negate X scale.
 		// Rotation cannot achieve a mirror (det=+1), but negative scale can (det=-1).
 		// The shader's billboard uses length(MODEL_MATRIX[0]) so the billboard size is
 		// unaffected by the sign, and cull_disabled means no backface issues.
-		float xScale = slotIndex == 1 ? -Constants.WeaponWidth : Constants.WeaponWidth;
+		float xScale = slotIndex == Constants.MirroredHandIndex ? -Constants.WeaponWidth : Constants.WeaponWidth;
 		MeshInstance3D mesh = new()
 		{
 			Name = "Mesh",

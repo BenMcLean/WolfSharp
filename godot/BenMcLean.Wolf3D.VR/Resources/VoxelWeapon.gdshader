@@ -81,6 +81,11 @@ uniform ivec3 model_offset = ivec3(0, 0, 0);
 // lookups that depend on model_size must account for the y/z swap (see fetch_voxel).
 uniform ivec3 model_size = ivec3(1, 1, 1);
 
+// Mirrors the model across its centre plane along MvY, which is the controller's left-right axis
+// (controller X = -MvY). Set by VoxelWeapon for the right hand so one authored model serves both
+// hands. VoxelWeapon.cs moves the grip voxel index to match; the shader only flips the fetch.
+uniform bool mirror_y = false;
+
 // DDA safety limits.  For weapon-sized models (≤ ~40 voxels per axis), the DDA
 // always exits via the bounds check well before these are reached; they exist
 // only to prevent a GPU hang if malformed data is ever supplied.
@@ -141,7 +146,7 @@ int fetch_voxel(ivec3 pos) {
 	if (pos.z >= model_size.y) return 0;  // MvY bound (DDA z axis = MvY)
 	ivec3 atlas_coord = ivec3(
 		model_offset.x + pos.x,  // U = MvX  (DDA x → atlas x, no swap)
-		model_offset.y + pos.z,  // V = MvY  (DDA z → atlas y)
+		model_offset.y + (mirror_y ? model_size.y - 1 - pos.z : pos.z),  // V = MvY  (DDA z → atlas y), flipped when mirrored
 		model_offset.z + pos.y   // W = MvZ  (DDA y → atlas z)
 	);
 	// texelFetch returns a normalised float in [0, 1] for an R8 texture.

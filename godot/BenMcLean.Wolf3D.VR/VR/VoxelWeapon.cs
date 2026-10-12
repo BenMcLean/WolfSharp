@@ -28,6 +28,8 @@ public partial class VoxelWeapon(VoxelAtlas voxelAtlas, int slotIndex, Node3D gr
 {
 	private readonly VoxelAtlas _voxelAtlas = voxelAtlas ?? throw new ArgumentNullException(nameof(voxelAtlas));
 	private readonly Node3D _gripNode = gripNode;
+	// The voxel models are authored for the right hand; Constants.MirroredHandIndex shows them mirrored left-right.
+	private readonly bool _mirrored = slotIndex == Constants.MirroredHandIndex;
 	private ShaderMaterial _material;
 	private QuadMesh _quadMesh;
 	private MeshInstance3D _meshInstance;
@@ -114,6 +116,7 @@ public partial class VoxelWeapon(VoxelAtlas voxelAtlas, int slotIndex, Node3D gr
 		// xyz[0..2] = atlas origin (MagicaVoxel X, Y, Z); xyz[3..5] = model size; xyz[6..8] = grip origin (MagicaVoxel X, Y, Z)
 		_material.SetShaderParameter("model_offset", new Vector3I(xyz[0], xyz[1], xyz[2]));
 		_material.SetShaderParameter("model_size", new Vector3I(xyz[3], xyz[4], xyz[5]));
+		_material.SetShaderParameter("mirror_y", _mirrored);
 		// Store the bounding-sphere radius so _Process can compute a perspective-correct quad
 		// size each frame. The quad is NOT sized here (beyond an initial fallback) because the
 		// correct size depends on the camera distance at the time of rendering, not at model-load
@@ -134,8 +137,10 @@ public partial class VoxelWeapon(VoxelAtlas voxelAtlas, int slotIndex, Node3D gr
 		if (xyz.Length >= 9)
 		{
 			Vector3 scale = _meshInstance.Scale;
+			// Mirroring flips MvY across the model's centre, so the grip voxel's MvY index flips with it.
+			int gripMvY = _mirrored ? xyz[4] - 1 - xyz[7] : xyz[7];
 			_meshInstance.Position = new Vector3(
-				scale.X * (xyz[7] + 0.5f - xyz[4] * 0.5f),
+				scale.X * (gripMvY + 0.5f - xyz[4] * 0.5f),
 				-scale.Y * (xyz[8] + 0.5f - xyz[5] * 0.5f),
 				-scale.Z * (xyz[6] + 0.5f - xyz[3] * 0.5f));
 			UpdateInvModelMatrix();
