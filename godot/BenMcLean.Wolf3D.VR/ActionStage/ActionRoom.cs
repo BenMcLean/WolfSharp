@@ -910,7 +910,7 @@ void sky() {
 				? _displayMode.GetHandForward(slotIndex)
 				: -_displayMode.Camera.GlobalTransform.Basis.Z,
 			origin = _displayMode.IsVRActive
-				? _displayMode.GetHandPosition(slotIndex)
+				? _displayMode.GetWeaponOrigin(slotIndex)
 				: _displayMode.Camera.GlobalPosition;
 		Vector2 horizontalForward = new(forward.X, forward.Z);
 		if (horizontalForward.LengthSquared() < 0.0001f)
@@ -939,7 +939,7 @@ void sky() {
 			return null;
 		Vector3 cameraForward = -_displayMode.Camera.GlobalTransform.Basis.Z,
 			rayOrigin = _displayMode.IsVRActive
-				? _displayMode.GetHandPosition(slotIndex)
+				? _displayMode.GetWeaponOrigin(slotIndex)
 				: _displayMode.Camera.GlobalPosition,
 			rayDirection = _displayMode.IsVRActive
 				? _displayMode.GetHandForward(slotIndex)
@@ -1092,7 +1092,7 @@ void sky() {
 	/// </summary>
 	private void UseObjectHandIsFacing(int handIndex)
 	{
-		Vector3 handPos = _displayMode.GetHandPosition(handIndex);
+		Vector3 handPos = _displayMode.GetWeaponOrigin(handIndex);
 		int handTileXInt = handPos.X.ToTile(), handTileYInt = handPos.Z.ToTile();
 		if (handTileXInt < 0 || handTileYInt < 0)
 			return;
@@ -1270,7 +1270,7 @@ void sky() {
 		{
 			if (_displayMode.IsTeleportModeActive)
 			{
-				Vector3 controllerPos = _displayMode.GetHandPosition(0),// Right controller
+				Vector3 controllerPos = _displayMode.GetWeaponOrigin(0),// Right weapon origin
 					controllerForward = _displayMode.GetHandForward(0),
 					viewerPos = _displayMode.ViewerPosition;
 				ushort playerTileX = (ushort)Mathf.Max(0, viewerPos.X.ToTile()),

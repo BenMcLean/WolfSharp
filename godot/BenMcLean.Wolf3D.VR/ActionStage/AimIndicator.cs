@@ -76,7 +76,7 @@ public partial class AimIndicator : Node3D
 			headPosition = _displayMode.Camera.GlobalPosition,
 			// Hand 0 (right in VR, camera in flatscreen)
 			origin0 = _displayMode.IsVRActive
-				? _displayMode.GetHandPosition(0)
+				? _displayMode.GetWeaponOrigin(0)
 				: _displayMode.Camera.GlobalPosition;
 		Hit0 = IsControllerAccessible(origin0, headPosition)
 			? _aiming.Raycast(origin0, _displayMode.GetHandForward(0), cameraForward)
@@ -85,7 +85,7 @@ public partial class AimIndicator : Node3D
 		// Hand 1 (left in VR only)
 		if (_aimPoint1 is not null)
 		{
-			Vector3 origin1 = _displayMode.GetHandPosition(1);
+			Vector3 origin1 = _displayMode.GetWeaponOrigin(1);
 			Hit1 = IsControllerAccessible(origin1, headPosition)
 				? _aiming.Raycast(origin1, _displayMode.GetHandForward(1), cameraForward)
 				: new PixelPerfectAiming.AimHitResult { IsHit = false };

@@ -23,7 +23,7 @@ public class FlatscreenDisplayMode : IDisplayMode
 	// In flatscreen mode, "hand" is calculated from camera position.
 	// Hand 0 is offset slightly forward and down-right to simulate holding a weapon.
 	// Hand 1 is offset to the left for asymmetric dual-wield layout.
-	public Vector3 GetHandPosition(int handIndex)
+	public Vector3 GetWeaponOrigin(int handIndex)
 	{
 		if (_camera is null)
 			return Vector3.Zero;

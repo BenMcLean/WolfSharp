@@ -178,13 +178,13 @@ public class VRMenuInput : IMenuInput
 		}
 		// Cast ray from hand 0 (right controller)
 		_primaryPointer = CastControllerRay(
-			_displayMode.GetHandPosition(0),
+			_displayMode.GetWeaponOrigin(0),
 			_displayMode.GetHandForward(0),
 			select0,
 			cancel0);
 		// Cast ray from hand 1 (left controller)
 		_secondaryPointer = CastControllerRay(
-			_displayMode.GetHandPosition(1),
+			_displayMode.GetWeaponOrigin(1),
 			_displayMode.GetHandForward(1),
 			select1,
 			cancel1);

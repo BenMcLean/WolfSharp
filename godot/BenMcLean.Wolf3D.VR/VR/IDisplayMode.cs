@@ -23,12 +23,14 @@ public interface IDisplayMode
 	/// </summary>
 	float ViewerYRotation { get; }
 	/// <summary>
-	/// Gets the world-space position of the specified hand.
-	/// In VR: hand 0 = right controller, hand 1 = left controller.
+	/// Gets the world-space position of the specified hand, which is also the point on the weapon's line of fire.
+	/// In VR: hand 0 = right, hand 1 = left; the grip pose origin, where the voxel weapon's grip origin voxel
+	/// is drawn (that voxel lies on the barrel axis). Shots, aim indicators, menu pointers and "use" checks
+	/// must start here so they line up with the weapon's sights.
 	/// In flatscreen: both hands calculated from camera.
 	/// </summary>
 	/// <param name="handIndex">0 = right/primary, 1 = left/secondary</param>
-	Vector3 GetHandPosition(int handIndex);
+	Vector3 GetWeaponOrigin(int handIndex);
 	/// <summary>
 	/// Gets the forward direction of the specified hand (for aiming).
 	/// In VR: controller orientation. In flatscreen: camera forward.

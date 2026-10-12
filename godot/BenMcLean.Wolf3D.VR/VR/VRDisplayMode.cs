@@ -63,9 +63,8 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 	public bool IsVRActive => true;
 	public Vector3 ViewerPosition => _camera?.GlobalPosition ?? Vector3.Zero;
 	public float ViewerYRotation => _camera?.GlobalRotation.Y ?? 0f;
-	public Vector3 GetHandPosition(int handIndex) => handIndex == 1
-		? _leftController?.GlobalPosition ?? ViewerPosition
-		: _rightController?.GlobalPosition ?? ViewerPosition;
+	public Vector3 GetWeaponOrigin(int handIndex) =>
+		(handIndex == 1 ? _leftGripController : _rightGripController)?.GlobalPosition ?? ViewerPosition;
 	public Vector3 GetHandForward(int handIndex) =>
 		handIndex == 1
 			? _leftController is not null
