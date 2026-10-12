@@ -51,7 +51,7 @@ public static class VRAssetManager
 	/// <summary>
 	/// Crosshair material for the aim indicator quad.
 	/// </summary>
-	public static StandardMaterial3D CrosshairMaterial { get; private set; }
+	public static ShaderMaterial CrosshairMaterial { get; private set; }
 	/// <summary>
 	/// Cache of flipped opaque materials with horizontally mirrored UVs.
 	/// Only contains materials for door textures. Used with negative scale for correct handle orientation.
@@ -152,6 +152,35 @@ void fragment() {
 }
 ", };
 	/// <summary>
+	/// Shader for the aim crosshair. Same RGSS mip sampling as the walls and sprites, so it is
+	/// pixel-sharp up close and smoothly anti-aliased at a distance. Unlike sprites it uses real
+	/// alpha blending instead of an alpha scissor: the crosshair arms are one texel wide, so their
+	/// mip alpha falls below any scissor threshold and the arms would vanish at a distance instead
+	/// of fading, so the alpha is also scaled back up by the minification to keep the arms visible at
+	/// any distance and angle. The texture is filtered with straight (non-premultiplied) alpha, so the color is
+	/// divided back out by alpha to keep the arms white rather than darkening toward the
+	/// transparent texels' black.
+	/// </summary>
+	private static readonly Shader _crosshairShader = new() { Code = @"
+shader_type spatial;
+render_mode unshaded, cull_back, blend_mix;
+
+uniform sampler2D albedo_texture : source_color, filter_nearest_mipmap, repeat_disable;
+" + RgssSampleFunction + @"
+void fragment() {
+	vec4 c = rgss_sample(albedo_texture, UV);
+	// Texels per screen pixel along the worst axis (1 or less when magnified). Filtering a one-texel
+	// line over that many texels divides its alpha by the same amount, so multiplying it back keeps
+	// the line fully visible at any distance or viewing angle, only softening its edges.
+	vec2 texSize = vec2(textureSize(albedo_texture, 0));
+	vec2 dx = dFdx(UV) * texSize;
+	vec2 dy = dFdy(UV) * texSize;
+	float minification = max(1.0, sqrt(max(dot(dx, dx), dot(dy, dy))));
+	ALBEDO = c.rgb / max(c.a, 0.0001);
+	ALPHA = clamp(c.a * minification, 0.0, 1.0);
+}
+", };
+	/// <summary>
 	/// Reference to the VSwap being used (from SharedAssetManager).
 	/// </summary>
 	private static VSwap _vswap;
@@ -183,16 +212,10 @@ void fragment() {
 		byte[] crosshairData = new byte[13 * 11 * 4]; // RGBA8888, all transparent
 		crosshairData = crosshairData.DrawCrosshair(width: 13);
 		Image crosshairImage = Image.CreateFromData(13, 11, false, Image.Format.Rgba8, crosshairData);
+		crosshairImage.GenerateMipmaps();
 		CrosshairTexture = ImageTexture.CreateFromImage(crosshairImage);
-		CrosshairMaterial = new StandardMaterial3D
-		{
-			AlbedoTexture = CrosshairTexture,
-			Transparency = BaseMaterial3D.TransparencyEnum.AlphaScissor,
-			AlphaScissorThreshold = 0.5f,
-			TextureFilter = BaseMaterial3D.TextureFilterEnum.Nearest,
-			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-			CullMode = BaseMaterial3D.CullModeEnum.Disabled, // Visible from both sides
-		};
+		CrosshairMaterial = new ShaderMaterial { Shader = _crosshairShader };
+		CrosshairMaterial.SetShaderParameter("albedo_texture", CrosshairTexture);
 		// Eagerly convert all opaque materials (walls and doors) using parallelization
 		// Only process pages that actually exist in the VSwap (skip null entries)
 		OpaqueMaterials = Enumerable.Range(0, _vswap.SpritePage)
