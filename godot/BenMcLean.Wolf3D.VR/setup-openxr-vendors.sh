@@ -10,10 +10,10 @@
 set -e
 
 # Plugin version - update this when upgrading
-PLUGIN_VERSION="4.3.1-stable"
+PLUGIN_VERSION="5.1.0-stable"
 
 # Minimum Godot version required for this plugin version
-MIN_GODOT_VERSION="4.4"
+MIN_GODOT_VERSION="4.6"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ADDONS_DIR="$SCRIPT_DIR/addons"

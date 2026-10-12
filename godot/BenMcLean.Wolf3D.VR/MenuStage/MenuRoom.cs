@@ -614,9 +614,9 @@ end
 			{
 				BackgroundMode = Godot.Environment.BGMode.Color,
 				BackgroundColor = _menuManager.Renderer.CurrentBordColor,
-				AmbientLightSource = Godot.Environment.AmbientSource.Color,
-				AmbientLightColor = Colors.White,
-				AmbientLightEnergy = 0.3f,
+				// Every material in this program is unshaded, so nothing ever samples ambient or reflected light.
+				AmbientLightSource = Godot.Environment.AmbientSource.Disabled,
+				ReflectedLightSource = Godot.Environment.ReflectionSource.Disabled,
 			}
 		};
 		AddChild(_worldEnvironment);
@@ -809,7 +809,7 @@ void sky() {
 				skyMaterial.SetShaderParameter("floor_color", floorColor);
 				skyMaterial.SetShaderParameter("ceiling_color", ceilingColor);
 				_worldEnvironment.Environment.BackgroundMode = Godot.Environment.BGMode.Sky;
-				_worldEnvironment.Environment.Sky = new Sky { SkyMaterial = skyMaterial };
+				_worldEnvironment.Environment.Sky = new Sky { SkyMaterial = skyMaterial, RadianceSize = Sky.RadianceSizeEnum.Size32 };
 			}
 		}
 	}

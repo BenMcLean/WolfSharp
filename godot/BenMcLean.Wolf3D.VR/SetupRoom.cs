@@ -154,9 +154,9 @@ public partial class SetupRoom : Node3D, IRoom
 			{
 				BackgroundMode = Godot.Environment.BGMode.Color,
 				BackgroundColor = Colors.Black,
-				AmbientLightSource = Godot.Environment.AmbientSource.Color,
-				AmbientLightColor = Colors.White,
-				AmbientLightEnergy = 1f,
+				// Every material in this program is unshaded, so nothing ever samples ambient or reflected light.
+				AmbientLightSource = Godot.Environment.AmbientSource.Disabled,
+				ReflectedLightSource = Godot.Environment.ReflectionSource.Disabled,
 			}
 		});
 		_displayMode.Camera.AddChild(new MeshInstance3D()

@@ -1246,8 +1246,13 @@ void sky() {
 				Sky = new()
 				{
 					SkyMaterial = _skyMaterial,
+					RadianceSize = Sky.RadianceSizeEnum.Size32, // Nothing is lit, so the sky never needs a real radiance map.
 				},
 				BackgroundMode = Godot.Environment.BGMode.Sky,
+				// Every material in this program is unshaded, so nothing ever samples ambient or reflected light.
+				// Defaults would take both from the sky, forcing it to generate a radiance cubemap for nothing.
+				AmbientLightSource = Godot.Environment.AmbientSource.Disabled,
+				ReflectedLightSource = Godot.Environment.ReflectionSource.Disabled,
 			},
 		};
 		AddChild(worldEnvironment);
