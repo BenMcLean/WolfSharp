@@ -730,16 +730,16 @@ void sky() {
 	private void OnHandButtonPressed(int handIndex, string buttonName)
 	{
 		UpdateCheatButtonState(handIndex, buttonName, pressed: true);
-		if (buttonName == "trigger_click")
+		if (buttonName == "trigger_click") // OpenXR: trigger/click
 			FireWeapon(handIndex);
-		else if (buttonName == "grip_click")
+		else if (buttonName == "grip_click") // OpenXR: squeeze/click
 		{
 			if (_displayMode.IsVRActive)
 				UseObjectHandIsFacing(handIndex);
 			else
 				UseObjectPlayerIsFacing();
 		}
-		else if (buttonName == "ax_button")
+		else if (buttonName == "ax_button") // OpenXR: a/click (right) or x/click (left)
 		{
 			if (HandleVrFaceButtonPress(handIndex, -1))
 				return;
@@ -747,7 +747,7 @@ void sky() {
 				return;
 			CycleWeapon(handIndex, -1);
 		}
-		else if (buttonName == "by_button")
+		else if (buttonName == "by_button") // OpenXR: b/click (right) or y/click (left)
 		{
 			if (HandleVrFaceButtonPress(handIndex, +1))
 				return;
@@ -755,13 +755,13 @@ void sky() {
 				return;
 			CycleWeapon(handIndex, +1);
 		}
-		else if (buttonName == "menu_button" && handIndex == 1)
+		else if (buttonName == "menu_button" && handIndex == 1) // OpenXR: menu/click
 		{
 			// Blocked during BJ victory animation
 			if (!(_simulatorController?.VictoryFlag ?? false))
 				PendingReturnToMenu = true;
 		}
-		else if (buttonName == "primary_click")
+		else if (buttonName == "primary_click") // OpenXR: thumbstick/click
 		{
 			if (handIndex == 0)
 			{
@@ -786,23 +786,23 @@ void sky() {
 		UpdateCheatButtonState(handIndex, buttonName, pressed: false);
 		if (HandleVrFaceButtonRelease(handIndex, buttonName))
 			return;
-		if (buttonName == "trigger_click")
+		if (buttonName == "trigger_click") // OpenXR: trigger/click
 			ReleaseWeaponTrigger(handIndex);
 	}
 	private void UpdateCheatButtonState(int handIndex, string buttonName, bool pressed)
 	{
 		if (handIndex == 0)
 		{
-			if (buttonName == "ax_button")
+			if (buttonName == "ax_button") // OpenXR: a/click (right) or x/click (left)
 				_rightAxPressed = pressed;
-			else if (buttonName == "by_button")
+			else if (buttonName == "by_button") // OpenXR: b/click (right) or y/click (left)
 				_rightByPressed = pressed;
 		}
 		else if (handIndex == 1)
 		{
-			if (buttonName == "ax_button")
+			if (buttonName == "ax_button") // OpenXR: a/click (right) or x/click (left)
 				_leftAxPressed = pressed;
-			else if (buttonName == "by_button")
+			else if (buttonName == "by_button") // OpenXR: b/click (right) or y/click (left)
 				_leftByPressed = pressed;
 		}
 	}
@@ -842,7 +842,7 @@ void sky() {
 	}
 	private bool HandleVrFaceButtonRelease(int handIndex, string buttonName)
 	{
-		if (!_displayMode.IsVRActive || !_cheatModeEnabled || (buttonName != "ax_button" && buttonName != "by_button"))
+		if (!_displayMode.IsVRActive || !_cheatModeEnabled || (buttonName != "ax_button" && buttonName != "by_button")) // OpenXR: a/click (right) or x/click (left), b/click (right) or y/click (left)
 			return false;
 		ref int pendingDirection = ref handIndex == 0
 			? ref _rightPendingCycleDirection
@@ -860,7 +860,7 @@ void sky() {
 			pendingDirection = 0;
 			return true;
 		}
-		int releasedDirection = buttonName == "ax_button" ? -1 : +1;
+		int releasedDirection = buttonName == "ax_button" ? -1 : +1; // OpenXR: a/click (right) or x/click (left)
 		if (pendingDirection == releasedDirection)
 		{
 			CycleWeapon(handIndex, pendingDirection);

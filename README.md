@@ -11,9 +11,28 @@ This project sharply diverges from [previous efforts at bringing the game to VR]
 
 At this time, I do NOT plan to work on support for Blake Stone, Corridor 7 or Rise of the Triad.
 
-Also, my project is going to go out of its way to intentionally never change the name of its master branch away from continuing to be called "master" because changing things that we all know are already not racist in the name of "stopping racism" is fundamentally dishonest and contemptible.
+Also, my project is going to go out of its way to intentionally never change the name of its `master` branch away from continuing to be called `master` because changing things that we all know are already not racist in the name of "stopping racism" is fundamentally dishonest and contemptible.
 
 Not to mention that I, of course, will not be censoring any of the swastikas in the game, nor the pictures of Hitler, nor the German eagles, nor the SS uniforms, nor the Nazi music, nor any other World War II related content from the original game. Nazis are bad and we should have genuinely bad Nazis in our World War II games, not fake ones.
+
+# VR Controls
+
+| [OpenXR input](https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#semantic-path-interaction-profiles) | Hand | In game | In menus |
+| --- | --- | --- | --- |
+| `/input/thumbstick` (x/y) | left | Move (forward/back, strafe) relative to where the headset faces | |
+| `/input/thumbstick` (x) | right | Turn (snap or smooth, see below) | |
+| `/input/thumbstick` (y) | right | Push forward or back to enter teleport mode and aim; turning is suppressed while active | |
+| `/input/thumbstick/click` | left | Toggle running | |
+| `/input/thumbstick/click` | right | Toggle snap/smooth turning; in teleport mode, confirm teleport to a valid destination | |
+| `/input/trigger/click` | both | Fire that hand's weapon | Select the menu item the controller is pointing at |
+| `/input/squeeze/click` | both | Use/push (door, wall, elevator) in the direction that controller is pointing | Cancel / back |
+| `/input/a/click` | right | Previous weapon for the right hand | Select |
+| `/input/b/click` | right | Next weapon for the right hand | Select |
+| `/input/x/click` | left | Previous weapon for the left hand | Select |
+| `/input/y/click` | left | Next weapon for the left hand | Select |
+| `/input/menu/click` | left | Return to the main menu | Reset position to face the menu screen |
+| `/input/grip/pose` | both | Where the hand and held weapon are drawn | |
+| `/input/aim/pose` | both | Direction of fire and menu pointer ray | |
 
 # Project History
 

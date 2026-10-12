@@ -178,7 +178,7 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 	{
 		if (_origin is null || _leftController is null || _camera is null)
 			return;
-		Vector2 stick = _leftController.GetVector2("primary");
+		Vector2 stick = _leftController.GetVector2("primary"); // OpenXR: thumbstick
 		if (stick.LengthSquared() < 0.01f)
 			return;
 		// Derive horizontal forward/right vectors from the camera's actual world-space basis,
@@ -201,7 +201,7 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 	{
 		if (_rightController is null)
 			return;
-		Vector2 stick = _rightController.GetVector2("primary");
+		Vector2 stick = _rightController.GetVector2("primary"); // OpenXR: thumbstick
 		if (Mathf.Abs(stick.Y) > TeleportThreshold && Mathf.Abs(stick.X) < TeleportThreshold)
 		{
 			// Thumbstick pushed forward or backward with little horizontal deflection —
@@ -225,7 +225,7 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 	{
 		if (_origin is null || _rightController is null || _camera is null)
 			return;
-		float x = _rightController.GetVector2("primary").X;
+		float x = _rightController.GetVector2("primary").X; // OpenXR: thumbstick
 		if (Mathf.Abs(x) < Constants.SnapTurnThreshold)
 		{
 			_snapTurnReady = true;
@@ -250,7 +250,7 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 	{
 		if (_origin is null || _rightController is null || _camera is null)
 			return;
-		float x = _rightController.GetVector2("primary").X;
+		float x = _rightController.GetVector2("primary").X; // OpenXR: thumbstick
 		if (Mathf.Abs(x) < Constants.SnapTurnThreshold)
 			return;
 		float angle = -x * Constants.SmoothTurnSpeed * delta;
@@ -306,12 +306,12 @@ public class VRDisplayMode(VRPlayMode playMode = VRPlayMode.Roomscale) : IDispla
 		_leftController is null
 			? Vector2.Zero
 		// Left thumbstick for movement
-			: _leftController.GetVector2("primary");
+			: _leftController.GetVector2("primary"); // OpenXR: thumbstick
 	public Vector2 GetTurnInput() =>
 		_rightController is null
 			? Vector2.Zero
 			// Right thumbstick for turning
-			: _rightController.GetVector2("primary");
+			: _rightController.GetVector2("primary"); // OpenXR: thumbstick
 	public Node3D GetGripHandNode(int handIndex) =>
 		handIndex == 1
 			? _leftGripController

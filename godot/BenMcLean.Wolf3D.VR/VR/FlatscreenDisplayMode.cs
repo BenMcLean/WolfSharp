@@ -62,13 +62,13 @@ public class FlatscreenDisplayMode : IDisplayMode
 		_camera.MovementEnabled = _locomotionEnabled;
 		// Wire up mouse button events to IDisplayMode events
 		// Left click = hand 0 trigger (shoot)
-		_camera.LeftClickPressed += () => HandButtonPressed?.Invoke(0, "trigger_click");
-		_camera.LeftClickReleased += () => HandButtonReleased?.Invoke(0, "trigger_click");
+		_camera.LeftClickPressed += () => HandButtonPressed?.Invoke(0, "trigger_click"); // OpenXR: trigger/click
+		_camera.LeftClickReleased += () => HandButtonReleased?.Invoke(0, "trigger_click"); // OpenXR: trigger/click
 		// Right click = hand 0 grip (use/push)
-		_camera.RightClickPressed += () => HandButtonPressed?.Invoke(0, "grip_click");
+		_camera.RightClickPressed += () => HandButtonPressed?.Invoke(0, "grip_click"); // OpenXR: squeeze/click
 		// Wheel up = next weapon; wheel down = previous weapon (mirrors VR by_button/ax_button)
-		_camera.WheelUp += () => HandButtonPressed?.Invoke(0, "by_button");
-		_camera.WheelDown += () => HandButtonPressed?.Invoke(0, "ax_button");
+		_camera.WheelUp += () => HandButtonPressed?.Invoke(0, "by_button"); // OpenXR: b/click (right) or y/click (left)
+		_camera.WheelDown += () => HandButtonPressed?.Invoke(0, "ax_button"); // OpenXR: a/click (right) or x/click (left)
 	}
 	public void Update(double delta)
 	{

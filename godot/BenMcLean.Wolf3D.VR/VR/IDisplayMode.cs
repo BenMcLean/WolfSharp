@@ -75,6 +75,9 @@ public interface IDisplayMode
 	/// In VR: hand 0 = right controller, hand 1 = left controller.
 	/// In flatscreen: left click fires hand 0 trigger_click; right click fires hand 0 grip_click.
 	/// Parameters: handIndex (0/1), buttonName (e.g. "trigger_click", "grip_click").
+	/// Button names are Godot action names. OpenXR equivalents: trigger_click = trigger/click, grip_click = squeeze/click,
+	/// primary_click = thumbstick/click, ax_button = a/click (right) or x/click (left),
+	/// by_button = b/click (right) or y/click (left), menu_button = menu/click.
 	/// </summary>
 	event Action<int, string> HandButtonPressed;
 	/// <summary>
@@ -82,6 +85,9 @@ public interface IDisplayMode
 	/// In VR: hand 0 = right controller, hand 1 = left controller.
 	/// In flatscreen: left click release fires hand 0 trigger_click.
 	/// Parameters: handIndex (0/1), buttonName (e.g. "trigger_click", "grip_click").
+	/// Button names are Godot action names. OpenXR equivalents: trigger_click = trigger/click, grip_click = squeeze/click,
+	/// primary_click = thumbstick/click, ax_button = a/click (right) or x/click (left),
+	/// by_button = b/click (right) or y/click (left), menu_button = menu/click.
 	/// </summary>
 	event Action<int, string> HandButtonReleased;
 	/// <summary>

@@ -62,33 +62,33 @@ public class VRMenuInput : IMenuInput
 	{
 		if (handIndex == 0)
 		{
-			if (buttonName == "trigger_click")
+			if (buttonName == "trigger_click") // OpenXR: trigger/click
 			{
 				// Trigger: pointer-only select — requires ray to hit the panel
 				_selectPressed0 = true;
 			}
-			else if (buttonName is "ax_button" or "by_button")
+			else if (buttonName is "ax_button" or "by_button") // OpenXR: a/click (right) or x/click (left), b/click (right) or y/click (left)
 			{
 				// A/B: select via ray when pointing, directional select when not pointing
 				_selectPressed0 = true;
 				_faceSelectPressed0 = true;
 			}
-			else if (buttonName == "grip_click") _cancelPressed0 = true;
+			else if (buttonName == "grip_click") _cancelPressed0 = true; // OpenXR: squeeze/click
 		}
 		else if (handIndex == 1)
 		{
-			if (buttonName == "trigger_click")
+			if (buttonName == "trigger_click") // OpenXR: trigger/click
 			{
 				// Trigger: pointer-only select — requires ray to hit the panel
 				_selectPressed1 = true;
 			}
-			else if (buttonName is "ax_button" or "by_button")
+			else if (buttonName is "ax_button" or "by_button") // OpenXR: a/click (right) or x/click (left), b/click (right) or y/click (left)
 			{
 				// X/Y: select via ray when pointing, directional select when not pointing
 				_selectPressed1 = true;
 				_faceSelectPressed1 = true;
 			}
-			else if (buttonName == "grip_click") _cancelPressed1 = true;
+			else if (buttonName == "grip_click") _cancelPressed1 = true; // OpenXR: squeeze/click
 		}
 	}
 	/// <summary>

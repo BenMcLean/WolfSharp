@@ -64,7 +64,7 @@ public static class Constants
 		/// 36 mm / 3 voxels = 12 mm per voxel.
 		/// But testing showed this was too big.
 		/// </summary>
-		WeaponMetersPerVoxel = 0.008f,
+		WeaponMetersPerVoxel = 0.008f;
 	/// <summary>
 	/// Weapon art (sprite and voxel) is authored for the right hand. The hand with this index
 	/// (0 = right, 1 = left) shows it mirrored left-right. Shared by WeaponHandMesh and VoxelWeapon.

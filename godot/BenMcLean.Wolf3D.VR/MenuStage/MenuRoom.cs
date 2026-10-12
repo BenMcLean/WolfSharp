@@ -949,7 +949,7 @@ void sky() {
 	/// </summary>
 	private void OnHandButtonPressed(int handIndex, string buttonName)
 	{
-		if (handIndex == 1 && buttonName == "menu_button")
+		if (handIndex == 1 && buttonName == "menu_button") // OpenXR: menu/click
 			_displayMode.ResetPositionFacing(MenuPanelWorldPos, SpawnWorldPos);
 	}
 	/// <summary>
