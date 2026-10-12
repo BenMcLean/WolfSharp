@@ -1,0 +1,33 @@
+# nfpm config for the .deb / .rpm packages built in .github/workflows/build.yml.
+# NFPM_ARCH (amd64|arm64), VERSION and EXPORT_DIR (Godot export output) are supplied by the workflow.
+# /usr/bin/net.benmclean.wolf3d is a launcher script that points the games folder at ~/.local/share/wolfsharp/games.
+name: wolfsharp
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${VERSION}
+section: games
+maintainer: Benjamin McLean <mclean.ben@gmail.com>
+description: |
+  Wolfenstein 3-D engine recreation for VR (WolfSharp).
+  Put game data in ~/.local/share/wolfsharp/games; see /usr/share/doc/wolfsharp/GAMES.md.
+homepage: https://github.com/BenMcLean/WolfSharp
+license: GPL-2.0-only
+contents:
+  - src: ${EXPORT_DIR}
+    dst: /opt/wolfsharp
+    type: tree
+  - src: packaging/linux/wolfsharp-launcher.sh
+    dst: /usr/bin/net.benmclean.wolf3d
+    file_info:
+      mode: 0755
+  - src: /usr/bin/net.benmclean.wolf3d
+    dst: /usr/bin/wolfsharp
+    type: symlink
+  - src: packaging/linux/net.benmclean.wolf3d.desktop
+    dst: /usr/share/applications/net.benmclean.wolf3d.desktop
+  - src: promo/icon/icon256.png
+    dst: /usr/share/icons/hicolor/256x256/apps/net.benmclean.wolf3d.png
+  - src: games/GAMES.md
+    dst: /usr/share/doc/wolfsharp/GAMES.md
+  - src: LICENSE
+    dst: /usr/share/doc/wolfsharp/copyright

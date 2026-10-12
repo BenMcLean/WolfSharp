@@ -1,6 +1,4 @@
-**WolfSharp VR** is a C# re-implementation of the *Wolfenstein 3-D* engine (a.k.a. id Tech 0) in Godot 4 for virtual reality in true stereoscopic 3D. It features full support for *Wolfenstein 3-D* shareware, retail, *Spear of Destiny*, its mission packs and, for the first time ever in virtual reality, *Super 3D Noah's Ark*. Builds are provided for Android (Meta Quest 3), Windows x64, Linux x64 and Linux ARM64 (Steam Frame).
-
-See [GAMES.md](https://github.com/BenMcLean/WolfSharp/blob/master/games/GAMES.md) for instructions on installing your game data.
+**WolfSharp VR** is a C# re-implementation of the *Wolfenstein 3-D* engine (a.k.a. id Tech 0) in Godot 4 for virtual reality in true stereoscopic 3D. It features full support for *Wolfenstein 3-D* shareware, retail, *Spear of Destiny*, its mission packs and, for the first time ever in virtual reality, *Super 3D Noah's Ark*. Builds are provided for Android (Quest), Windows x64, Linux x64 and Linux ARM64 (Steam Frame).
 
 This project sharply diverges from [previous efforts at bringing the game to VR](https://further-beyond.itch.io/wolf3dvr) in several key areas:
 
@@ -15,7 +13,29 @@ Also, my project is going to go out of its way to intentionally never change the
 
 Not to mention that I, of course, will not be censoring any of the swastikas in the game, nor the pictures of Hitler, nor the German eagles, nor the SS uniforms, nor the Nazi music, nor any other World War II related content from the original game. Nazis are bad and we should have genuinely bad Nazis in our World War II games, not fake ones.
 
-# VR Controls
+# Installation
+
+See [GAMES.md](https://github.com/BenMcLean/WolfSharp/blob/master/games/GAMES.md) for instructions on installing your game data.
+
+## Android (Quest)
+
+[Get it on SideQuest](https://sidequestvr.com/app/61100/wolfsharp).
+
+## Windows
+
+[Get it on itch.io](https://benmclean.itch.io/wolfsharp).
+
+## Linux (including Steam Frame)
+
+No root needed; installs the latest release's AppImage, adds a menu entry and a `wolfsharp` command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/BenMcLean/WolfSharp/master/install.sh | sh
+```
+
+Run the same command again to update. [Game data](https://github.com/BenMcLean/WolfSharp/blob/master/games/GAMES.md) goes in `~/.local/share/wolfsharp/games`.
+
+# Controls
 
 | [OpenXR input](https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#semantic-path-interaction-profiles) | Hand | In game | In menus |
 | --- | --- | --- | --- |
@@ -44,7 +64,7 @@ The availability of commercial LLMs on cheap subscription plans is what made it 
 
 Only small snippets from the *Wolfenstein 3-D* source code were directly used in the creation of this program. The bulk of the code is original, using the original source as a reference.
 
-[The *Wolfenstein 3-D* source code](https://github.com/id-Software/wolf3d) is dual-licensed as the ["Limited Use Software License Agreement"](https://github.com/id-Software/wolf3d) as well as [GNU GPL](https://github.com/id-Software/Wolf3D-iOS/blob/master/wolf3d/COPYING.txt). We know that not only the iOS source code but also the original 16-bit C source code is available under the GNU GPL because John Carmack's notes in id Software's official *Wolfenstein 3-D* iOS source code release from March 20th, 2009 stated, ["I released the original source for Wolfenstein 3D many years ago, originally under a not-for-commercial purposes license, then later under the GPL."](https://github.com/id-Software/Wolf3D-iOS/blob/master/wolf3d/readme_iWolf.txt) I would be able to omit this complicated explanation if only the current company would take five minutes to actually add a GNU GPL license file to the official *Wolfenstein 3-D* source code release.
+[The *Wolfenstein 3-D* source code](https://github.com/id-Software/wolf3d) is dual-licensed as the ["Limited Use Software License Agreement"](https://github.com/id-Software/wolf3d) as well as [GNU GPLv2](https://github.com/id-Software/Wolf3D-iOS/blob/master/wolf3d/COPYING.txt). We know that not only the iOS source code but also the original 16-bit C source code is available under the GNU GPLv2 because John Carmack's notes in id Software's official *Wolfenstein 3-D* iOS source code release from March 20th, 2009 stated, ["I released the original source for Wolfenstein 3D many years ago, originally under a not-for-commercial purposes license, then later under the GPL."](https://github.com/id-Software/Wolf3D-iOS/blob/master/wolf3d/readme_iWolf.txt) I would be able to omit this complicated explanation if only the current company would take five minutes to actually add a GNU GPL license file to the official *Wolfenstein 3-D* source code release.
 
 The [*Wolfenstein 3-D* Shareware v1.4](https://archive.org/download/Wolfenstein3d/Wolfenstein3dV14sw.ZIP) game data created by id Software and published by Apogee is included under its original shareware redistribution permission from 1992. No other game data is included in official builds. Users supply their own game data to play anything else.
 

@@ -40,9 +40,10 @@
 #   3. Pick the branch to build from, enter a throwaway version string (e.g. "0.0.0-preview" or a
 #      date/commit stamp) in the "Version number" field, and click the green "Run workflow" button.
 #   4. Wait for the "Export <platform>" jobs and "Export Android (Meta Quest)" to finish (green
-#      checks). Each produces one artifact: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
-#      ..._linux-x64_v<version>.tar.gz, ..._linux-arm64_v<version>.tar.gz, and
-#      ..._android-meta-quest_v<version>.apk.
+#      checks). Windows and Android each produce one file: BenMcLean.Wolf3D.VR_windows-x64_v<version>.zip,
+#      ..._android-meta-quest_v<version>.apk. Linux produces folders instead of single files:
+#      itch-linux-x64 / itch-linux-arm64 (AppImage + games/ + README; run chmod +x on the
+#      AppImage after downloading) and linux-release-linux-* (AppImage, .zsync, .deb, .rpm).
 #   5. Open the completed run's summary page and download each artifact under "Artifacts".
 #      GitHub Actions artifacts are zipped again on download, so unzip once to get the real file.
 #   Manually running the workflow this way never creates a GitHub Release (that only happens from
@@ -95,21 +96,20 @@ jobs:
             output_dir: build/windows
             release_dir: build/windows
             output_file: BenMcLean.Wolf3D.VR.exe
-            archive_ext: zip
           - preset: "Linux"
             name: linux-x64
             output_dir: build/linux
             release_dir: build/linux-release
             output_file: BenMcLean.Wolf3D.VR.x86_64
-            archive_ext: tar.gz
             appimage_arch: x86_64
+            nfpm_arch: amd64
           - preset: "Linux (arm64)"
             name: linux-arm64
             output_dir: build/linux-arm64
             release_dir: build/linux-arm64-release
             output_file: BenMcLean.Wolf3D.VR.arm64
-            archive_ext: tar.gz
             appimage_arch: aarch64
+            nfpm_arch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -179,34 +179,73 @@ jobs:
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
           wget -q "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-${{ matrix.appimage_arch }}" -O runtime
           chmod +x appimagetool
+          sudo apt-get install -y -qq zsync
           mkdir -p "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games"
           # --appimage-extract-and-run avoids needing FUSE, which isn't available on GH-hosted runners
           # appimagetool spells aarch64 as "arm_aarch64" for its ARCH variable (plain "aarch64" is rejected)
           TOOL_ARCH="${{ matrix.appimage_arch }}"
           if [ "$TOOL_ARCH" = "aarch64" ]; then TOOL_ARCH=arm_aarch64; fi
-          ARCH="$TOOL_ARCH" ./appimagetool --appimage-extract-and-run --runtime-file runtime \
+          # -u embeds update info (read by AppImageUpdate, Gear Lever, etc.) and makes appimagetool
+          # write a .zsync file next to where it is run, for delta updates from the latest GitHub Release
+          APPIMAGE_NAME="BenMcLean.Wolf3D.VR-${{ matrix.appimage_arch }}.AppImage"
+          mkdir -p "$GITHUB_WORKSPACE/appimage-update"
+          cd "$GITHUB_WORKSPACE/appimage-update"
+          ARCH="$TOOL_ARCH" "$GITHUB_WORKSPACE/appimagetool" --appimage-extract-and-run --runtime-file "$GITHUB_WORKSPACE/runtime" \
+            -u "gh-releases-zsync|BenMcLean|WolfSharp|latest|$APPIMAGE_NAME.zsync" \
             "$GITHUB_WORKSPACE/build/AppDir" \
-            "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/BenMcLean.Wolf3D.VR-${{ matrix.appimage_arch }}.AppImage"
+            "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/$APPIMAGE_NAME"
+          # Standalone copy of the AppImage beside its .zsync, uploaded as its own release asset below
+          cp "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/$APPIMAGE_NAME" .
+          cd "$GITHUB_WORKSPACE"
           cp "$GITHUB_WORKSPACE/games/GAMES.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/games/GAMES.md"
           if [ -f "$GITHUB_WORKSPACE/README.md" ]; then
             cp "$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/${{ matrix.release_dir }}/README.md"
           fi
 
-      - name: Package release archive
+      - name: Build .deb and .rpm
+        if: startsWith(matrix.name, 'linux-')
+        env:
+          NFPM_ARCH: ${{ matrix.nfpm_arch }}
+          VERSION: ${{ needs.determine-version.outputs.version }}
+          EXPORT_DIR: ${{ matrix.output_dir }}
+        run: |
+          wget -q "https://github.com/goreleaser/nfpm/releases/download/v2.41.3/nfpm_2.41.3_Linux_x86_64.tar.gz" -O nfpm.tar.gz
+          tar -xzf nfpm.tar.gz nfpm
+          for fmt in deb rpm; do
+            ./nfpm package --config packaging/linux/nfpm.yaml --packager "$fmt" --target appimage-update/
+          done
+
+      - name: Package release archive (Windows)
+        if: matrix.name == 'windows-x64'
         env:
           ARCHIVE_NAME: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
         run: |
           cd "$GITHUB_WORKSPACE/${{ matrix.release_dir }}"
-          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
-            zip -qr "$GITHUB_WORKSPACE/$ARCHIVE_NAME.zip" .
-          else
-            tar -czf "$GITHUB_WORKSPACE/$ARCHIVE_NAME.tar.gz" .
-          fi
+          zip -qr "$GITHUB_WORKSPACE/$ARCHIVE_NAME.zip" .
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows build
+        if: matrix.name == 'windows-x64'
+        uses: actions/upload-artifact@v4
         with:
           name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
-          path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}.${{ matrix.archive_ext }}
+          path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}.zip
+
+      # Linux: the release dir (AppImage + games/ + README) is pushed to itch.io as a plain folder.
+      # Artifact upload drops the executable bit; the itch-release job restores it.
+      - name: Upload Linux folder (for itch.io)
+        if: startsWith(matrix.name, 'linux-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: itch-${{ matrix.name }}
+          path: ${{ matrix.release_dir }}/
+
+      # Linux GitHub Release assets: standalone AppImage + .zsync (for AppImageUpdate), .deb, .rpm
+      - name: Upload Linux release assets
+        if: startsWith(matrix.name, 'linux-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-${{ matrix.name }}
+          path: appimage-update/*
 
   export-android:
     name: Export Android (Meta Quest)
@@ -335,6 +374,10 @@ jobs:
         with:
           path: artifacts
 
+      # itch-* artifacts are the folders pushed to itch.io; they duplicate the Linux release assets.
+      - name: Keep itch.io folders off the Release
+        run: rm -rf artifacts/itch-*
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -372,15 +415,13 @@ jobs:
 
       - name: Push Linux build
         run: |
-          mkdir -p push/linux-x64
-          tar -xzf "artifacts/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}/BenMcLean.Wolf3D.VR_linux-x64_v${VERSION}.tar.gz" -C push/linux-x64
-          ./butler/butler push push/linux-x64 "$ITCH_TARGET:linux-x64" --userversion "$VERSION"
+          chmod +x artifacts/itch-linux-x64/*.AppImage
+          ./butler/butler push artifacts/itch-linux-x64 "$ITCH_TARGET:linux-x64" --userversion "$VERSION"
 
       - name: Push Linux arm64 build (Steam Frame)
         run: |
-          mkdir -p push/linux-arm64
-          tar -xzf "artifacts/BenMcLean.Wolf3D.VR_linux-arm64_v${VERSION}/BenMcLean.Wolf3D.VR_linux-arm64_v${VERSION}.tar.gz" -C push/linux-arm64
-          ./butler/butler push push/linux-arm64 "$ITCH_TARGET:linux-arm64" --userversion "$VERSION"
+          chmod +x artifacts/itch-linux-arm64/*.AppImage
+          ./butler/butler push artifacts/itch-linux-arm64 "$ITCH_TARGET:linux-arm64" --userversion "$VERSION"
 
       - name: Push Android build
         run: |

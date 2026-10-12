@@ -2,6 +2,8 @@ The [Wolfenstein 3-D Shareware v1.4](https://archive.org/download/Wolfenstein3d/
 
 On PC, a subfolder should be created for each game under a "games" folder placed next to the executable.
 
+If you installed from a `.deb`, `.rpm` or AUR package, use `~/.local/share/wolfsharp/games` instead.
+
 On Android, the subfolders go under `/sdcard/WOLF3D`.
 
 On any platform, the location can be overridden with `--path <path>` or the `WOLF3D_GAMES_DIR` environment variable.

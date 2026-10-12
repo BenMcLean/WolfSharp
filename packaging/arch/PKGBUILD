@@ -1,0 +1,39 @@
+# Maintainer: Benjamin McLean <mclean.ben@gmail.com>
+# Repackages the release AppImage (extracted, so FUSE is not needed). Update pkgver and
+# regenerate checksums with `updpkgsums` after each release.
+pkgname=wolfsharp-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Wolfenstein 3-D engine recreation for VR (requires your own game data)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/BenMcLean/WolfSharp'
+license=('GPL-2.0-only')
+options=('!strip')
+provides=('wolfsharp')
+conflicts=('wolfsharp')
+_rel="$url/releases/download/v$pkgver"
+source_x86_64=("$_rel/BenMcLean.Wolf3D.VR-x86_64.AppImage")
+source_aarch64=("$_rel/BenMcLean.Wolf3D.VR-aarch64.AppImage")
+source=("$url/raw/v$pkgver/packaging/linux/net.benmclean.wolf3d.desktop"
+        "$url/raw/v$pkgver/packaging/linux/wolfsharp-launcher.sh")
+sha256sums=('SKIP' 'SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+noextract=("BenMcLean.Wolf3D.VR-$CARCH.AppImage")
+
+prepare() {
+  chmod +x "BenMcLean.Wolf3D.VR-$CARCH.AppImage"
+  "./BenMcLean.Wolf3D.VR-$CARCH.AppImage" --appimage-extract >/dev/null
+}
+
+package() {
+  install -d "$pkgdir/opt/wolfsharp" "$pkgdir/usr/bin"
+  cp -a squashfs-root/usr/bin/. "$pkgdir/opt/wolfsharp/"
+  chmod -R u+rwX,go+rX "$pkgdir/opt/wolfsharp"
+  # Launcher points the games folder at ~/.local/share/wolfsharp/games (/opt is root-owned)
+  install -Dm755 wolfsharp-launcher.sh "$pkgdir/usr/bin/net.benmclean.wolf3d"
+  ln -s net.benmclean.wolf3d "$pkgdir/usr/bin/wolfsharp"
+  install -Dm644 net.benmclean.wolf3d.desktop -t "$pkgdir/usr/share/applications"
+  install -Dm644 squashfs-root/net.benmclean.wolf3d.png \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/net.benmclean.wolf3d.png"
+}
