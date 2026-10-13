@@ -5,6 +5,11 @@
 # If these secrets are absent the Android job will fail; Windows and Linux builds are unaffected.
 # IMPORTANT: keep the original release.keystore file safe - losing it prevents updating existing installs.
 #
+# Optional repository secret for the sidequest-release job:
+#   SIDEQUEST_WEBHOOK_TOKEN - the BIG_LONG_TOKEN at the end of the webhook URL from SideQuest App Studio
+#                             (app -> Distribution -> "Copy webhook URL"). If absent the job is skipped.
+#   Use this instead of the GitHub "release" webhook on the repo, which can fire before the APK is attached.
+#
 # Required repository secret for the itch-release job:
 #   BUTLER_API_KEY - itch.io API key with permission to push builds, from
 #                    https://itch.io/user/settings/api-keys
@@ -413,6 +418,31 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: artifacts/*/*
+
+  sidequest-release:
+    name: Update SideQuest
+    needs: [determine-version, release]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      SIDEQUEST_WEBHOOK_TOKEN: ${{ secrets.SIDEQUEST_WEBHOOK_TOKEN }}
+      VERSION: ${{ needs.determine-version.outputs.version }}
+    steps:
+      # Runs only after the GitHub Release (with the APK attached) exists. The version code matches
+      # the APK's version/code, which export-android sets from github.run_number. Passing "url"
+      # makes SideQuest replace any existing APK url (e.g. a manual upload) with the release asset.
+      - name: Notify SideQuest
+        run: |
+          if [ -z "$SIDEQUEST_WEBHOOK_TOKEN" ]; then
+            echo "SIDEQUEST_WEBHOOK_TOKEN not set; skipping SideQuest update"
+            exit 0
+          fi
+          APK="BenMcLean.Wolf3D.VR_android-meta-quest_v${VERSION}.apk"
+          URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$APK"
+          curl -sS --fail-with-body -X POST \
+            "https://sdq.st/version-webhook/${{ github.run_number }}/$SIDEQUEST_WEBHOOK_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{\"url\": \"$URL\"}"
 
   itch-release:
     name: Push to itch.io
