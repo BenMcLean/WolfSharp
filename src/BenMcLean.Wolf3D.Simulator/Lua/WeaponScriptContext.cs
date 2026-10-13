@@ -211,6 +211,7 @@ public class WeaponScriptContext(
 	/// Switch to the lowest-numbered weapon (out of ammo fallback).
 	/// WL_AGENT.C case -1: gamestate.weapon = wp_knife equivalent.
 	/// Data-driven: finds weapon with lowest Number in WeaponCollection.
+	/// Also switches any other hand holding a weapon that uses the same ammo.
 	/// </summary>
 	public void SwitchToLowestWeapon()
 	{
@@ -222,7 +223,17 @@ public class WeaponScriptContext(
 				if (lowest is null || weapon.Number < lowest.Number)
 					lowest = weapon;
 			if (lowest is not null)
+			{
 				simulator.EquipWeapon(slotIndex, lowest.Name);
+				// Ammo is shared, so every other hand using the same ammo type is also out of ammo.
+				for (int i = 0; i < simulator.WeaponSlots.Count; i++)
+					if (i != slotIndex
+						&& simulator.WeaponCollection.Weapons.TryGetValue(simulator.WeaponSlots[i].WeaponType ?? string.Empty, out WeaponInfo other)
+						&& other.Number != lowest.Number
+						&& !string.IsNullOrEmpty(weaponInfo.AmmoType)
+						&& other.AmmoType == weaponInfo.AmmoType)
+						simulator.EquipWeapon(i, lowest.Name);
+			}
 		}
 	}
 	#endregion Weapon Switching
