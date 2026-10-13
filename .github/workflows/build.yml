@@ -88,7 +88,7 @@ jobs:
     needs: determine-version
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - preset: "Windows Desktop"
@@ -211,8 +211,10 @@ jobs:
         run: |
           wget -q "https://github.com/goreleaser/nfpm/releases/download/v2.41.3/nfpm_2.41.3_Linux_x86_64.tar.gz" -O nfpm.tar.gz
           tar -xzf nfpm.tar.gz nfpm
+          # nfpm doesn't expand env vars in contents.src, so substitute them ourselves
+          envsubst '${NFPM_ARCH} ${VERSION} ${EXPORT_DIR}' < packaging/linux/nfpm.yaml > nfpm-resolved.yaml
           for fmt in deb rpm; do
-            ./nfpm package --config packaging/linux/nfpm.yaml --packager "$fmt" --target appimage-update/
+            ./nfpm package --config nfpm-resolved.yaml --packager "$fmt" --target appimage-update/
           done
 
       - name: Package release archive (Windows)
@@ -361,6 +363,33 @@ jobs:
           name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}
           path: build/android/BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}.apk
 
+  # Fail fast across jobs: GitHub only cancels siblings within one matrix, so if either the export
+  # matrix or the Android job fails, these cancel the whole run rather than burning minutes on
+  # builds that can no longer be released.
+  cancel-on-export-failure:
+    name: Cancel run on export failure
+    needs: export
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  cancel-on-android-failure:
+    name: Cancel run on Android failure
+    needs: export-android
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   release:
     name: Create Release
     needs: [determine-version, export, export-android]
@@ -387,7 +416,7 @@ jobs:
 
   itch-release:
     name: Push to itch.io
-    needs: [determine-version, export, export-android]
+    needs: [determine-version, export, export-android, release]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
