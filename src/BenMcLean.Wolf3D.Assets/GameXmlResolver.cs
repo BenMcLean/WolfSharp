@@ -1,14 +1,15 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Linq;
 
 namespace BenMcLean.Wolf3D.Assets;
 
 /// <summary>
 /// Resolves game XML inheritance chains declared with a Base attribute.
-/// When Base is present, Name and Path override the base definition and all other
-/// local content is ignored.
+/// When Base is present, Name, Path, Extension and the install attributes (Gog, GogDir, Steam,
+/// SteamDir, Itch, ItchDir) override the base definition and all other local content is ignored.
 /// </summary>
 public static class GameXmlResolver
 {
@@ -27,14 +28,33 @@ public static class GameXmlResolver
 		ArgumentNullException.ThrowIfNull(loadBaseXml);
 		string baseReference = xml.Attribute(BaseAttributeName)?.Value;
 		if (string.IsNullOrWhiteSpace(baseReference))
-			return new XElement(xml);
+			return RequireVgaGraph(new XElement(xml));
 		ValidateDerivedStub(xml);
 		XElement merged = new(loadBaseXml(baseReference.Trim()));
 		CopyAttributeIfPresent(xml, merged, "Name");
 		CopyAttributeIfPresent(xml, merged, "Path");
 		CopyAttributeIfPresent(xml, merged, "Extension");
+		// A derived game's install attributes replace the base's as a set, because the base's
+		// directories (e.g. GogDir) describe the base game's data, not the derived game's.
+		if (InstallAttributeNames.Any(name => xml.Attribute(name) is not null))
+		{
+			foreach (string name in InstallAttributeNames)
+				merged.Attribute(name)?.Remove();
+			foreach (string name in InstallAttributeNames)
+				CopyAttributeIfPresent(xml, merged, name);
+		}
 		return merged;
 	}
+	// Every game draws its menus from VGAGRAPH, so a definition without it is invalid. Maps, Audio and
+	// VSwap are optional. A derived game inherits a base that was already checked when it was resolved.
+	private static XElement RequireVgaGraph(XElement xml) =>
+		new[] { "VgaDict", "VgaGraph", "VgaHead" }
+			.All(name => !string.IsNullOrWhiteSpace(xml.Element("VgaGraph")?.Attribute(name)?.Value))
+			? xml
+			: throw new InvalidDataException(
+				"Game XML must define a VgaGraph element with VgaDict, VgaGraph and VgaHead attributes.");
+	private static readonly string[] InstallAttributeNames =
+		["Gog", "GogDir", "Steam", "SteamDir", "Itch", "ItchDir"];
 	private static XElement LoadFromFile(
 		string xmlPath,
 		HashSet<string> visited,

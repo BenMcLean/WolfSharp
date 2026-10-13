@@ -1,4 +1,4 @@
-using System.Xml;
+﻿using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 
@@ -56,8 +56,6 @@ public static class GameCheckerLogic
 				Context: DescribeValidationContext(sender, context),
 				Message: args.Message));
 		};
-		foreach (Issue issue in schemaIssues)
-			yield return issue;
 		#endregion Schema
 		#region XDocument
 		XDocument? tryDoc = null;
@@ -76,6 +74,9 @@ public static class GameCheckerLogic
 		{
 			loadException = ex;
 		}
+		// Validation events fire while the document loads, so schema issues are only complete now.
+		foreach (Issue issue in schemaIssues)
+			yield return issue;
 		if (xmlException is not null)
 		{
 			yield return new Issue(xmlException.LineNumber, xmlException.LinePosition, context, $"Failed to parse XML: {xmlException.Message}");
@@ -88,6 +89,10 @@ public static class GameCheckerLogic
 		}
 		XDocument doc = tryDoc ?? throw new NullReferenceException();
 		#endregion XDocument
+		#region Game
+		foreach (Issue issue in CheckGame(doc.Root ?? throw new NullReferenceException(), baseDirectory))
+			yield return issue;
+		#endregion Game
 		#region Assets
 		HashSet<string> sprites = [.. doc.Names("Sprite")],
 			pics = [.. doc.Names("Pic")],
@@ -244,6 +249,80 @@ public static class GameCheckerLogic
 				yield return i;
 		#endregion Assets
 	}
+	#region Game
+	private static readonly string[] StoreAttributes = ["Gog", "GogDir", "Steam", "SteamDir", "Itch", "ItchDir"];
+	private static Issue AttributeIssue(XAttribute attribute, string message)
+	{
+		IXmlLineInfo line = attribute;
+		return new Issue(line.LineNumber, line.LinePosition, $"<{attribute.Parent?.Name.LocalName} {attribute.Name.LocalName}=\"{attribute.Value}\">", message);
+	}
+	private static bool IsOutsideInstall(string folder) =>
+		Path.IsPathRooted(folder) || folder.Split('/', '\\').Contains("..");
+	/// <summary>
+	/// Rules the XSD cannot express and that the loader enforces. A game that breaks the VgaGraph
+	/// rule is left out of the game list. Store problems never block a game, they only stop it
+	/// being found in a store install.
+	/// </summary>
+	private static IEnumerable<Issue> CheckGame(XElement game, string? baseDirectory)
+	{
+		IXmlLineInfo gameLine = game;
+		string? baseReference = game.Attribute("Base")?.Value;
+		// A game that uses Base inherits its VgaGraph from the base game.
+		if (baseReference is null)
+		{
+			XElement? vgaGraph = game.Element("VgaGraph");
+			if (new[] { "VgaDict", "VgaGraph", "VgaHead" }.Any(name => string.IsNullOrWhiteSpace(vgaGraph?.Attribute(name)?.Value)))
+				yield return new Issue(gameLine.LineNumber, gameLine.LinePosition, "<Game>",
+					"VgaGraph is required: a game must define <VgaGraph> with VgaDict, VgaGraph and VgaHead attributes, because every game draws its menus from VGAGRAPH. Without it the game is invalid and will not appear in the game list.");
+		}
+		foreach (string store in new[] { "Gog", "Steam" })
+		{
+			XAttribute? ids = game.Attribute(store),
+				dirs = game.Attribute(store + "Dir");
+			string[] idList = ids?.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+			if (ids is not null)
+			{
+				if (idList.Length == 0)
+					yield return AttributeIssue(ids, $"{store} lists no IDs.");
+				foreach (string id in idList.Where(id => !id.All(char.IsAsciiDigit)))
+					yield return AttributeIssue(ids, $"'{id}' is not a numeric {store} ID. Separate IDs with commas.");
+			}
+			if (dirs is null)
+				continue;
+			string[] entries = dirs.Value.Split('|', StringSplitOptions.TrimEntries);
+			if (ids is null)
+				yield return AttributeIssue(dirs, $"{dirs.Name} is ignored because {store} is not set.");
+			else if (entries.Length > idList.Length)
+				yield return AttributeIssue(dirs, $"{dirs.Name} has {entries.Length} entries but {store} lists {idList.Length} ID(s). Entries are matched to IDs by position, so the extra entries are ignored.");
+			foreach (string entry in entries.Where(IsOutsideInstall))
+				yield return AttributeIssue(dirs, $"'{entry}' must be a folder inside the install: relative, without '..'. Separate multiple folders with '|'.");
+		}
+		XAttribute? itch = game.Attribute("Itch"),
+			itchDir = game.Attribute("ItchDir");
+		if (itch is not null && (string.IsNullOrWhiteSpace(itch.Value) || itch.Value.IndexOfAny([',', '|', '/', '\\', ' ']) >= 0))
+			yield return AttributeIssue(itch, "Itch must be the single last part of the game's itch.io URL, such as s3dna.");
+		if (itchDir is not null)
+		{
+			if (itch is null)
+				yield return AttributeIssue(itchDir, "ItchDir is ignored because Itch is not set.");
+			if (itchDir.Value.Contains('|'))
+				yield return AttributeIssue(itchDir, "ItchDir takes a single folder because Itch is a single install.");
+			else if (IsOutsideInstall(itchDir.Value.Trim()))
+				yield return AttributeIssue(itchDir, $"'{itchDir.Value}' must be a folder inside the install: relative, without '..'.");
+		}
+		// A derived game's store attributes replace the base's as a set, so inheriting them means
+		// looking in folders that hold the base game's data, not this game's.
+		if (baseReference is not null &&
+			!StoreAttributes.Any(name => game.Attribute(name) is not null) &&
+			baseDirectory is not null &&
+			Path.Combine(baseDirectory, baseReference) is string basePath &&
+			File.Exists(basePath) &&
+			XDocument.Load(basePath).Root is XElement baseGame &&
+			StoreAttributes.Any(name => baseGame.Attribute(name) is not null))
+			yield return new Issue(gameLine.LineNumber, gameLine.LinePosition, "<Game>",
+				$"Warning: this game inherits the store attributes (Gog, Steam, Itch) of '{baseReference}', but those point at the base game's data. Set this game's own store attributes.");
+	}
+	#endregion Game
 	#region Utilities
 	private static IEnumerable<string> Names(this XDocument doc, string descendants) => doc
 		.Descendants(descendants)

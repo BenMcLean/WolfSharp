@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -64,7 +64,7 @@ public class AssetManager
 		openRead = path => baseOpenRead(ResolveCaseInsensitive(path, baseFileExists));
 		// When multiple comma-separated extensions are listed, also try each in order.
 		// E.g. Extension="SOD,SD2" supports both GOG (*.SOD) and original retail (*.SD2).
-		string[] extensions = ParseExtensions(xml);
+		string[] extensions = GameFiles.ParseExtensions(xml);
 		if (extensions.Length > 1)
 		{
 			Func<string, bool> ciFileExists = fileExists;
@@ -270,26 +270,11 @@ public class AssetManager
 		}
 		catch { return path; }
 	}
-	private static string[] ParseExtensions(XElement xml) =>
-		(xml.Attribute("Extension")?.Value ?? "")
-			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 	private static bool FileExistsWithExtensionFallback(string path, string[] extensions, Func<string, bool> fileExists) =>
-		fileExists(path) ||
-		extensions.Any(ext => fileExists(Path.Combine(
-			Path.GetDirectoryName(path) ?? "",
-			Path.GetFileNameWithoutExtension(path) + "." + ext)));
-	private static Stream OpenReadWithExtensionFallback(string path, string[] extensions, Func<string, bool> fileExists, Func<string, Stream> openRead)
-	{
-		if (fileExists(path)) return openRead(path);
-		foreach (string ext in extensions)
-		{
-			string candidate = Path.Combine(
-				Path.GetDirectoryName(path) ?? "",
-				Path.GetFileNameWithoutExtension(path) + "." + ext);
-			if (fileExists(candidate)) return openRead(candidate);
-		}
-		return openRead(path); // let original path produce the FileNotFoundException
-	}
+		GameFiles.Resolve(path, extensions, fileExists) is not null;
+	// Falls back to the original path so it produces the FileNotFoundException.
+	private static Stream OpenReadWithExtensionFallback(string path, string[] extensions, Func<string, bool> fileExists, Func<string, Stream> openRead) =>
+		openRead(GameFiles.Resolve(path, extensions, fileExists) ?? path);
 	private static bool FileExists(string path, Func<string, bool> fileExists) => fileExists?.Invoke(path) ?? File.Exists(path);
 	private static Stream OpenRead(string path, Func<string, Stream> openRead) => openRead?.Invoke(path) ?? File.OpenRead(path);
 	private static MenuCollection LoadMenuCollection(XElement xml) =>

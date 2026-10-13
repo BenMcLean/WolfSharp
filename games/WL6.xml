@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Game Name="Wolfenstein 3-D" Path="WL6" Extension="WL6" Exe="WOLF3D.EXE" HighScores="CONFIG.WL6"
+<Game Name="Wolfenstein 3-D" Path="WL6" Extension="WL6" Exe="WOLF3D.EXE" HighScores="CONFIG.WL6" Gog="1441705046,1778420505" Steam="2270" SteamDir="base"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="WOLF3D.xsd">
 	<OnStartup>LoadMenu("Rating")</OnStartup>
 	<VgaGraph VgaDict="VGADICT.WL6" VgaGraph="VGAGRAPH.WL6" VgaHead="VGAHEAD.WL6"

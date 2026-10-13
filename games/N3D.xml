@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Game Name="Super 3-D Noah's Ark" Version="1.0" Path="N3D" Extension="N3D" Exe="noah3d.exe"
-	HighScores="config.n3d" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	HighScores="config.n3d" Gog="1672565562" Steam="371180" Itch="s3dna" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="WOLF3D.xsd">
 	<OnStartup>LoadMenu("Title")</OnStartup>
 	<VgaGraph VgaDict="vgadict.n3d" VgaGraph="vgagraph.n3d" VgaHead="vgahead.n3d"

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,13 +16,25 @@ public static class GameCatalog
 	private const string EmbeddedResourcePrefix = "BenMcLean.Wolf3D.Shared.Resources.",
 		SharewareFileName = "WL1.xml",
 		SharewareZipResource = "BenMcLean.Wolf3D.Shared.Resources.Wolfenstein3dV14sw.ZIP";
-	public sealed record GameDefinition(string XmlPath, XElement Xml, bool IsEmbedded)
+	/// <param name="InstalledDataDirectory">
+	/// Read-only GOG/Steam/itch.io install directory used when the games folder lacks the game data; null otherwise.
+	/// </param>
+	public sealed record GameDefinition(string XmlPath, XElement Xml, bool IsEmbedded, string InstalledDataDirectory = null)
 	{
 		public string FileName => Path.GetFileName(XmlPath);
 		public string DisplayName => Xml.Attribute("Name")?.Value ?? Path.GetFileNameWithoutExtension(XmlPath);
-		public string GameDataDirectory => Path.Combine(
+		/// <summary>
+		/// The games folder location for this game's data. Config, high scores and save games
+		/// are always read from and written to here, never to an install.
+		/// </summary>
+		public string LocalDataDirectory => Path.Combine(
 			Path.GetDirectoryName(XmlPath) ?? string.Empty,
 			Xml.Attribute("Path")?.Value ?? string.Empty);
+		/// <summary>
+		/// Where read-only game data is loaded from: the games folder if it has the data,
+		/// otherwise an installed copy found through the Install element.
+		/// </summary>
+		public string GameDataDirectory => InstalledDataDirectory ?? LocalDataDirectory;
 	}
 	private static readonly Lazy<IReadOnlyDictionary<string, string>> EmbeddedXmlResources = new(() =>
 		Assembly.GetExecutingAssembly()
@@ -115,7 +127,7 @@ public static class GameCatalog
 						resourceName: baseResourceName,
 						visited: new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 				});
-			definition = new(xmlPath, xml, IsEmbedded: false);
+			definition = WithInstalledFallback(new(xmlPath, xml, IsEmbedded: false));
 			return true;
 		}
 		catch
@@ -129,7 +141,7 @@ public static class GameCatalog
 		try
 		{
 			XElement xml = LoadEmbeddedGameDefinitionXml(fileName, resourceName, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-			definition = new(Path.Combine(gamesDirectory, fileName), xml, IsEmbedded: true);
+			definition = WithInstalledFallback(new(Path.Combine(gamesDirectory, fileName), xml, IsEmbedded: true));
 			return true;
 		}
 		catch
@@ -167,47 +179,47 @@ public static class GameCatalog
 	private static bool IsPlayable(GameDefinition definition) =>
 		CanUseEmbeddedSharewareData(definition)
 		|| HasExternalGameData(definition);
-	public static bool HasExternalGameData(GameDefinition definition) =>
-		Directory.Exists(definition.GameDataDirectory) &&
-		RequiredFilesExist(definition.Xml.Element("VgaGraph"), definition.GameDataDirectory, "VgaDict", "VgaGraph", "VgaHead") &&
-		RequiredFilesExist(definition.Xml.Element("Maps"), definition.GameDataDirectory, "MapHead", "GameMaps") &&
-		RequiredFilesExist(definition.Xml.Element("Audio"), definition.GameDataDirectory, "AudioHead", "AudioT") &&
-		RequiredFilesExist(definition.Xml.Element("VSwap"), definition.GameDataDirectory, "Name");
-	private static bool RequiredFilesExist(XElement element, string folder, params string[] attributeNames)
+	/// <summary>
+	/// Priority: the games folder overrides everything; otherwise the first Steam, then GOG,
+	/// then itch.io install named by the game's Gog, Steam and Itch attributes that has the data. Read-only fallback:
+	/// config, high scores and save games still go to the games folder.
+	/// </summary>
+	private static GameDefinition WithInstalledFallback(GameDefinition definition)
 	{
-		if (element is null)
-			return true;
-		foreach (string attributeName in attributeNames)
-		{
-			string fileName = element.Attribute(attributeName)?.Value;
-			if (string.IsNullOrWhiteSpace(fileName))
-				continue;
-			if (!File.Exists(Path.Combine(folder, fileName)))
-				return false;
-		}
-		return true;
+		if (HasGameDataIn(definition.Xml, definition.LocalDataDirectory))
+			return definition;
+		string installed = InstalledGameLocator.FindGameDataDirectory(
+			definition.Xml,
+			directory => HasGameDataIn(definition.Xml, directory));
+		return installed is null ? definition : definition with { InstalledDataDirectory = installed };
 	}
+	public static bool HasExternalGameData(GameDefinition definition) =>
+		HasGameDataIn(definition.Xml, definition.GameDataDirectory);
+	// A file counts if it exists under any of the game's Extension variants, the same rule the
+	// asset loader uses, so a folder the loader could read is never rejected here.
+	private static bool HasGameDataIn(XElement xml, string directory) =>
+		Directory.Exists(directory) &&
+		RequiredFileNames(xml).All(fileName => Assets.GameFiles.Resolve(
+			Path.Combine(directory, fileName),
+			Assets.GameFiles.ParseExtensions(xml),
+			File.Exists) is not null);
+	// Only files the XML lists are required: a game in development omits the ones it doesn't have yet.
+	// GameXmlResolver rejects XML without a VgaGraph, so this is never empty for a loaded game.
+	private static string[] RequiredFileNames(XElement xml) =>
+		[.. new (string Element, string[] Attributes)[]
+			{
+				("VgaGraph", ["VgaDict", "VgaGraph", "VgaHead"]),
+				("Maps", ["MapHead", "GameMaps"]),
+				("Audio", ["AudioHead", "AudioT"]),
+				("VSwap", ["Name"]),
+			}
+			.SelectMany(section => section.Attributes
+				.Select(attribute => xml.Element(section.Element)?.Attribute(attribute)?.Value))
+			.Where(fileName => !string.IsNullOrWhiteSpace(fileName))];
 	public static bool CanUseEmbeddedSharewareData(GameDefinition definition) =>
 		definition.FileName.Equals(SharewareFileName, StringComparison.OrdinalIgnoreCase) &&
-		RequiredFilesExist(definition.Xml.Element("VgaGraph"), string.Empty, EmbeddedSharewareFileExists, "VgaDict", "VgaGraph", "VgaHead") &&
-		RequiredFilesExist(definition.Xml.Element("Maps"), string.Empty, EmbeddedSharewareFileExists, "MapHead", "GameMaps") &&
-		RequiredFilesExist(definition.Xml.Element("Audio"), string.Empty, EmbeddedSharewareFileExists, "AudioHead", "AudioT") &&
-		RequiredFilesExist(definition.Xml.Element("VSwap"), string.Empty, EmbeddedSharewareFileExists, "Name");
+		RequiredFileNames(definition.Xml).All(EmbeddedSharewareFileExists);
 	private static bool EmbeddedSharewareFileExists(string path) => EmbeddedSharewareFiles.Value.Contains(Path.GetFileName(path));
-	private static bool RequiredFilesExist(XElement element, string folder, Func<string, bool> fileExists, params string[] attributeNames)
-	{
-		if (element is null)
-			return true;
-		foreach (string attributeName in attributeNames)
-		{
-			string fileName = element.Attribute(attributeName)?.Value;
-			if (string.IsNullOrWhiteSpace(fileName))
-				continue;
-			if (!fileExists(Path.Combine(folder, fileName)))
-				return false;
-		}
-		return true;
-	}
 	private static HashSet<string> LoadEmbeddedSharewareFiles()
 	{
 		HashSet<string> files = new(StringComparer.OrdinalIgnoreCase);

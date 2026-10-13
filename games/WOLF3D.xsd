@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
 
 	<!-- ============================================ -->
@@ -10,7 +10,17 @@
 			<xs:documentation>
 				Root element for Wolfenstein 3D game definition.
 				Defines all game assets, levels, and configuration. When Base is specified,
-				Name and Path override the base definition; any other local content is ignored.
+				Name, Path, Extension and the install attributes override the base definition; any
+				other local content is ignored.
+
+				Install attributes (an ID attribute with an optional matching Dir attribute for each
+				supported store, such as Steam and SteamDir) let the engine find a copy of the game
+				data already installed by a store when the games folder does not have it. Priority is
+				the games folder first, then Steam, GOG and itch.io. Installs are only ever read from:
+				config, high scores and save games are always written to the games folder and never
+				fall back to an install. A derived game's install attributes replace the base's as a
+				set if it specifies any of them. An install is skipped if its folder does not exist or
+				lacks the files this XML requires.
 			</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>
@@ -46,17 +56,76 @@
 					<xs:documentation>
 						File extension(s) for game data files (e.g., "WL1", "SOD").
 						Multiple extensions may be specified as a comma-separated list (e.g., "SOD,SD2").
-						When multiple extensions are listed, the engine tries them in order when a file
-						is not found under its primary name, using the first match found. The first
-						extension is also used for save game and config file naming.
-						Example: Extension="SOD,SD2" supports both GOG releases (*.SOD) and
-						original retail releases (*.SD2) of Spear of Destiny Mission 2.
+						Extensions are tried in the order listed for every file, so list the most specific one first.
+						The first extension is also used for save game file naming.
+						Example: Extension="SD2,SOD" reads Spear of Destiny Mission 2 from *.SD2 where it exists,
+						such as the original retail release and Steam, which keeps every mission side by side,
+						and from *.SOD otherwise, such as the shared files and the GOG release, which has a folder
+						for each mission. Listing *.SOD first would pick up the *.SOD copy of the wrong mission.
 					</xs:documentation>
 				</xs:annotation>
 			</xs:attribute>
 			<xs:attribute name="Exe" type="xs:string"/>
 			<xs:attribute name="HighScores" type="xs:string"/>
 			<xs:attribute name="Path" type="xs:string"/>
+			<xs:attribute name="Gog" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						Comma-separated GOG.com product IDs of releases containing this game's data,
+						in priority order (e.g., "1441705046,1778420505"). On Windows the install
+						is found through the registry. On Linux only installs made by Heroic are found.
+						See GogDir for where the data is inside the install.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="GogDir" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						Folders inside the GOG installs that hold the game data (e.g., "M1"), relative to
+						each install folder. Separate entries with | (a character that cannot appear in a
+						Windows path). Entries are matched to the product IDs in Gog by position, so a
+						game distributed in several products can use a different layout in each. An ID
+						with no entry uses the install folder itself.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="Steam" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						Comma-separated Steam app IDs of releases containing this game's data, in
+						priority order (e.g., "2270,9000"). The install folder is read from the appmanifest
+						in each Steam library. See SteamDir for where the data is inside the install.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="SteamDir" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						Folders inside the Steam installs that hold the game data (e.g., "base/m1|base"),
+						separated by | (a character that cannot appear in a Windows path). Entries are
+						matched to the app IDs in Steam by position, so a game distributed in several
+						products can use a different layout in each. An ID with no entry uses the install
+						folder itself.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="Itch" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						The last part of the game's itch.io URL (e.g., "s3dna" for
+						wisdomtree.itch.io/s3dna). The itch app installs the game into a folder of this
+						name. See ItchDir for where the data is inside the install.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="ItchDir" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>
+						The folder inside the itch.io install that holds the game data. Defaults to the
+						install folder itself.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
 		</xs:complexType>
 	</xs:element>
 
@@ -120,6 +189,10 @@
 			<xs:documentation>
 				Graphics assets from VGAGRAPH/VGADICT/VGAHEAD files.
 				Contains fonts, pictures, status bar, and menu definitions.
+				Required: every game draws its menus from VGAGRAPH, so a game definition without
+				it is invalid. Maps, Audio and VSwap are optional. This schema marks the element optional
+				only because a game that uses Base inherits it; the loader and GameChecker reject a
+				game that has neither.
 			</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>
@@ -131,9 +204,9 @@
 				<xs:element ref="Questions" minOccurs="0"/>
 				<xs:element ref="Menus" minOccurs="0"/>
 			</xs:all>
-			<xs:attribute name="VgaDict" type="xs:string"/>
-			<xs:attribute name="VgaGraph" type="xs:string"/>
-			<xs:attribute name="VgaHead" type="xs:string"/>
+			<xs:attribute name="VgaDict" type="xs:string" use="required"/>
+			<xs:attribute name="VgaGraph" type="xs:string" use="required"/>
+			<xs:attribute name="VgaHead" type="xs:string" use="required"/>
 			<xs:attribute name="LoadingPic" type="xs:string"/>
 			<xs:attribute name="TileChunk" type="xs:nonNegativeInteger">
 				<xs:annotation>

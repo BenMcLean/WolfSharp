@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Game Name="Spear of Destiny" Path="M1" Extension="SOD" Exe="Spear.exe" HighScores="CONFIG.SOD"
+<Game Name="Spear of Destiny" Path="M1" Extension="SD1,SOD" Exe="Spear.exe" HighScores="CONFIG.SOD" Gog="1441705126" GogDir="M1" Steam="2270,9000" SteamDir="base/m1|base"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="WOLF3D.xsd">
 	<OnStartup>LoadMenu("Rating")</OnStartup>
 	<VgaGraph VgaDict="VGADICT.SOD" VgaGraph="VGAGRAPH.SOD" VgaHead="VGAHEAD.SOD"

@@ -95,7 +95,9 @@ public class MapAnalyzer
 		// Parse WallPlane element attributes (optional — games without a VSWAP can omit them).
 		// MaxWallTiles defaults to 0 (no tile-mapped walls; use pre-baked WallSpawns instead).
 		// DoorWall defaults to 0 (no doors).
-		XElement wallsElement = XML.Element("VSwap")?.Element("WallPlane");
+		// An absent element behaves as an empty one so a game with no VSwap section (such as a
+		// menus-only game) gets every default below.
+		XElement wallsElement = XML.Element("VSwap")?.Element("WallPlane") ?? new XElement("WallPlane");
 		MaxWallTiles = ushort.TryParse(wallsElement?.Attribute("MaxWallTiles")?.Value, out ushort mwt)
 			? mwt : (ushort)0;
 		DoorWall = ushort.TryParse(wallsElement?.Attribute("DoorWall")?.Value, out ushort dw)
