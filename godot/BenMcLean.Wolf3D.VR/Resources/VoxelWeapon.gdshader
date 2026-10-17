@@ -176,9 +176,9 @@ int fetch_voxel(ivec3 pos) {
 //   planes in that direction).
 //
 // All inputs are in DDA voxel space [0, model_size).
-// hit_pos_dda is set to the centre of the first filled voxel hit (voxel_pos + 0.5),
-// still in DDA voxel space.  The caller uses this to compute the correct clip-space
-// depth of the voxel surface for the depth buffer.
+// hit_pos_dda is set to the point on the surface of the first filled voxel hit where the
+// ray entered it (ray_origin + ray_dir * distance), still in DDA voxel space.  The caller
+// uses this to compute the correct clip-space depth of the visible surface for the depth buffer.
 vec4 raymarch(vec3 ray_origin, vec3 ray_dir, out vec3 hit_pos_dda) {
 	hit_pos_dda = vec3(0.0);
 	ivec3 voxel_pos = ivec3(floor(ray_origin));
@@ -216,7 +216,8 @@ vec4 raymarch(vec3 ray_origin, vec3 ray_dir, out vec3 hit_pos_dda) {
 	vec3 ray_sign = vec3(ray_step);
 	vec3 side_dist = (ray_sign * (vec3(voxel_pos) - ray_origin + 0.5) + 0.5) * delta_dist;
 
-	// Accumulated DDA t-value, used only as a safety exit via max_distance.
+	// t of the most recent grid-plane crossing, measured from ray_origin: the safety exit via
+	// max_distance, and (on a hit) the distance to the surface of the voxel just entered.
 	// For all valid weapon-sized models the bounds check below is the real exit.
 	float distance = 0.0;
 
@@ -231,8 +232,8 @@ vec4 raymarch(vec3 ray_origin, vec3 ray_dir, out vec3 hit_pos_dda) {
 		int palette_idx = fetch_voxel(voxel_pos);
 		if (palette_idx > 0) {
 			// First non-empty voxel hit: look up its colour in the palette LUT.
-			// Record the voxel centre so the caller can write the correct depth.
-			hit_pos_dda = vec3(voxel_pos) + vec3(0.5);
+			// Record the surface entry point so the caller can write the correct depth.
+			hit_pos_dda = ray_origin + ray_dir * distance;
 			vec4 color = texelFetch(palette, ivec2(palette_idx, 0), 0);
 			return vec4(color.rgb, 1.0);
 		}
@@ -247,21 +248,21 @@ vec4 raymarch(vec3 ray_origin, vec3 ray_dir, out vec3 hit_pos_dda) {
 			if (side_dist.x < side_dist.z) {
 				side_dist.x += delta_dist.x;
 				voxel_pos.x += ray_step.x;
-				distance = side_dist.x;
+				distance = side_dist.x - delta_dist.x;
 			} else {
 				side_dist.z += delta_dist.z;
 				voxel_pos.z += ray_step.z;
-				distance = side_dist.z;
+				distance = side_dist.z - delta_dist.z;
 			}
 		} else {
 			if (side_dist.y < side_dist.z) {
 				side_dist.y += delta_dist.y;
 				voxel_pos.y += ray_step.y;
-				distance = side_dist.y;
+				distance = side_dist.y - delta_dist.y;
 			} else {
 				side_dist.z += delta_dist.z;
 				voxel_pos.z += ray_step.z;
-				distance = side_dist.z;
+				distance = side_dist.z - delta_dist.z;
 			}
 		}
 	}
