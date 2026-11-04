@@ -43,8 +43,9 @@ public static class RuntimeOptions
 	/// Defaults:
 	///   Android (Quest): /sdcard/WOLF3D
 	///   Editor: ../../games relative to CWD (resolves to repo games/ folder)
-	///   Linux AppImage: games/ subfolder next to the .AppImage file itself, not the temporary
-	///     FUSE mount OS.GetExecutablePath() would otherwise resolve to
+	///   Linux AppImage: games/ subfolder next to the .AppImage file itself (not the temporary
+	///     FUSE mount OS.GetExecutablePath() would otherwise resolve to), or else the per-user
+	///     $XDG_DATA_HOME/wolfsharp/games (default ~/.local/share/wolfsharp/games), see AppImageGamesDir
 	///   PC export: games/ subfolder next to the executable
 	/// </summary>
 	public static string Path
@@ -75,7 +76,40 @@ public static class RuntimeOptions
 	private static string DefaultGamesDir() =>
 		OS.HasFeature("android") ? "/sdcard/WOLF3D"
 		: OS.HasFeature("editor") ? System.IO.Path.GetFullPath(System.IO.Path.Combine("..", "..", "games"))
-		: System.IO.Path.Combine(BaseDir(), "games");
+		: AppImageGamesDir() ?? System.IO.Path.Combine(BaseDir(), "games");
+	/// <summary>
+	/// Only when running from an AppImage: chooses between games/ next to the AppImage and the
+	/// per-user folder that install.sh and the .deb/.rpm/AUR packages use, so a loose AppImage
+	/// (e.g. one left in the home folder) still finds game data. Preference order: the first
+	/// folder that already holds game subfolders, then the first that exists, then the per-user
+	/// folder (always writable, unlike some places an AppImage might sit). Returns null when not
+	/// running from an AppImage. Steam, GOG and itch.io installs are only consulted afterwards,
+	/// per game, for games the chosen folder doesn't have.
+	/// </summary>
+	private static string AppImageGamesDir()
+	{
+		if (OS.HasFeature("android") || System.Environment.GetEnvironmentVariable("APPIMAGE") is not string appImagePath || appImagePath.Length == 0)
+			return null;
+		string dataHome = System.Environment.GetEnvironmentVariable("XDG_DATA_HOME") is string xdg && System.IO.Path.IsPathRooted(xdg)
+				? xdg
+				: System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".local", "share"),
+			perUser = System.IO.Path.Combine(dataHome, "wolfsharp", "games");
+		string[] candidates = [System.IO.Path.Combine(System.IO.Path.GetDirectoryName(appImagePath), "games"), perUser];
+		return candidates.FirstOrDefault(HasSubdirectories)
+			?? candidates.FirstOrDefault(System.IO.Directory.Exists)
+			?? perUser;
+	}
+	private static bool HasSubdirectories(string directory)
+	{
+		try
+		{
+			return System.IO.Directory.Exists(directory) && System.IO.Directory.EnumerateDirectories(directory).Any();
+		}
+		catch (System.Exception)
+		{
+			return false;
+		}
+	}
 	/// <summary>
 	/// Directory used as the base for relative --path arguments and the default games folder.
 	/// When running from an AppImage, OS.GetExecutablePath() resolves to a temporary, read-only

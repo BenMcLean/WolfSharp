@@ -30,6 +30,8 @@ On PC, a subfolder should be created for each game under a "games" folder placed
 
 If you installed from a `.deb`, `.rpm` or AUR package, use `~/.local/share/wolfsharp/games` instead.
 
+The Linux AppImage checks `games` next to the `.AppImage` file first, then `~/.local/share/wolfsharp/games` (or `$XDG_DATA_HOME/wolfsharp/games`). It uses the first of those that already contains game folders, and if neither does, the first that exists, otherwise the per-user one. Steam, GOG and itch.io installs are only looked at afterwards, for games that folder doesn't have.
+
 On Android, the subfolders go under `/sdcard/WOLF3D`.
 
 On any platform, the location can be overridden with `--path <path>` or the `WOLF3D_GAMES_DIR` environment variable.
