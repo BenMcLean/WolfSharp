@@ -232,7 +232,7 @@ jobs:
 
       - name: Upload Windows build
         if: matrix.name == 'windows-x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}
           path: BenMcLean.Wolf3D.VR_${{ matrix.name }}_v${{ needs.determine-version.outputs.version }}.zip
@@ -241,7 +241,7 @@ jobs:
       # Artifact upload drops the executable bit; the itch-release job restores it.
       - name: Upload Linux folder (for itch.io)
         if: startsWith(matrix.name, 'linux-')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: itch-${{ matrix.name }}
           path: ${{ matrix.release_dir }}/
@@ -249,7 +249,7 @@ jobs:
       # Linux GitHub Release assets: standalone AppImage + .zsync (for AppImageUpdate), .deb, .rpm
       - name: Upload Linux release assets
         if: startsWith(matrix.name, 'linux-')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-release-${{ matrix.name }}
           path: appimage-update/*
@@ -363,7 +363,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/build/android"
           godot --headless --export-release "Android" "$GITHUB_WORKSPACE/build/android/$APK_NAME"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}
           path: build/android/BenMcLean.Wolf3D.VR_android-meta-quest_v${{ needs.determine-version.outputs.version }}.apk
