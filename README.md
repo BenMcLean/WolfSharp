@@ -93,3 +93,8 @@ Third, [Adam Biser](https://adambiser.itch.io/wdc), [Fabien Sanglard](http://fab
 [Tommy Ettinger](https://github.com/tommyettinger) contributed the random number generator.
 
 Finally, gotta thank the original id Software team from back in the day for making such awesome games!
+
+# Other Projects
+- [Wolfenstein3D-PSP](https://github.com/BenMcLean/Wolfenstein3D-PSP): *Wolfenstein 3-D*, *Spear of Destiny* and *Super 3D Noah's Ark* for the Sony PlayStation Portable.
+- [CloudyDoom](https://github.com/BenMcLean/CloudyDoom): Multiplayer *Doom*, playable straight in the browser, pointed at your own dedicated server.
+- [CloudyQuake](https://github.com/BenMcLean/CloudyQuake): Multiplayer *Quake*, playable straight in the browser, pointed at your own dedicated server.
